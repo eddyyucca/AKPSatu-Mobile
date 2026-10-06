@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
+import '../pattern.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+
+InputDecoration _loginField(String hint, {Widget? suffix}) => InputDecoration(
+      hintText: hint,
+      hintStyle: ts(16, c: const Color(0xFF757575), w: FontWeight.w400),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+      constraints: const BoxConstraints(minHeight: 52, maxHeight: 52),
+      suffixIcon: suffix,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.input)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.input)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.blue, width: 2)),
+    );
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,6 +25,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool show = false;
+
+  Widget _field(String label, Widget input) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: ts(13, w: FontWeight.w600, c: C.text2)),
+        const Gap(6),
+        input,
+      ]);
+
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: C.navy,
@@ -20,58 +41,73 @@ class _LoginScreenState extends State<LoginScreen> {
             builder: (context, box) => SingleChildScrollView(
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: box.maxHeight),
-                child: Column(children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 48, 28, 32),
-                    child: Column(children: [
-                      const Logo(size: 104),
-                      const Gap(16),
-                      Text('AKPSatu', style: ts(28, w: FontWeight.w800, c: Colors.white)),
-                      const Gap(6),
-                      Text('Satu aplikasi untuk semua kebutuhan kerja karyawan AKP.',
-                          textAlign: TextAlign.center, style: ts(15, c: C.pale, h: 1.5)),
-                    ]),
-                  ),
-                  Container(
-                    width: double.infinity,
-                    constraints: BoxConstraints(minHeight: box.maxHeight - 250),
-                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                    decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Masuk', style: ts(20, w: FontWeight.w800)),
-                      const Gap(16),
-                      const TextBox('NIP', hint: 'Contoh: AKP001'),
-                      LabeledField(
-                        'Password',
-                        TextField(
-                          obscureText: !show,
-                          style: ts(15),
-                          decoration: fieldDeco(hint: 'Masukkan password').copyWith(
-                            suffixIcon: IconButton(
-                              tooltip: 'Tampilkan password',
-                              onPressed: () => setState(() => show = !show),
-                              icon: Icon(show ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: C.muted),
+                child: IntrinsicHeight(
+                  child: Column(children: [
+                    BrandHeader(
+                      padding: const EdgeInsets.fromLTRB(28, 56, 28, 32),
+                      child: Column(children: [
+                        const Logo(size: 112),
+                        const Gap(16),
+                        Text('AKPSatu', style: ts(28, w: FontWeight.w800, c: Colors.white).copyWith(letterSpacing: -0.3)),
+                        const Gap(6),
+                        Text('Satu aplikasi untuk semua kebutuhan kerja karyawan AKP.', textAlign: TextAlign.center, style: ts(15, c: C.pale, h: 1.5, w: FontWeight.w400)),
+                      ]),
+                    ),
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          Text('Masuk', style: ts(20, w: FontWeight.w800)),
+                          const Gap(16),
+                          _field('NIK', TextField(style: ts(16, w: FontWeight.w400), decoration: _loginField('Contoh: 32601949'))),
+                          const Gap(16),
+                          _field(
+                            'Password',
+                            TextField(
+                              obscureText: !show,
+                              style: ts(16, w: FontWeight.w400),
+                              decoration: _loginField(
+                                'Masukkan password',
+                                suffix: IconButton(
+                                  tooltip: 'Tampilkan password',
+                                  onPressed: () => setState(() => show = !show),
+                                  icon: const Ic('eye', color: C.muted),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const Gap(16),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: InkWell(
+                              onTap: () => toast(context, 'Hubungi IT Support untuk reset password'),
+                              child: SizedBox(height: 40, child: Center(child: Text('Lupa password?', style: ts(14, w: FontWeight.w600, c: C.blue)))),
+                            ),
+                          ),
+                          const Gap(16),
+                          Material(
+                            color: C.blue,
+                            borderRadius: BorderRadius.circular(12),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => Navigator.pushNamed(context, R.token),
+                              child: SizedBox(height: 54, child: Center(child: Text('Masuk', style: ts(16, w: FontWeight.w700, c: Colors.white)))),
+                            ),
+                          ),
+                          const Gap(16),
+                          InkWell(
+                            onTap: () => Navigator.pushNamed(context, R.driver),
+                            child: SizedBox(height: 40, child: Center(child: Text('Masuk sebagai Driver (demo)', style: ts(13, w: FontWeight.w600, c: C.blue)))),
+                          ),
+                          const Spacer(),
+                          Center(child: Text('Butuh bantuan? Hubungi IT Support · AKPSatu v1.0.0', textAlign: TextAlign.center, style: ts(12, c: C.muted, w: FontWeight.w400))),
+                        ]),
                       ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(onPressed: () => toast(context, 'Hubungi IT Support untuk reset password'), child: Text('Lupa password?', style: ts(14, w: FontWeight.w600, c: C.blue))),
-                      ),
-                      const Gap(4),
-                      PrimaryButton('Masuk', height: 54, onTap: () => Navigator.pushNamed(context, R.token)),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => Navigator.pushNamed(context, R.driver),
-                          child: Text('Masuk sebagai Driver (demo)', style: ts(13, w: FontWeight.w600, c: C.blue)),
-                        ),
-                      ),
-                      const Gap(16),
-                      Center(child: Text('Butuh bantuan? Hubungi IT Support · AKPSatu v1.0.0', textAlign: TextAlign.center, style: ts(12, c: C.muted))),
-                    ]),
-                  ),
-                ]),
+                    ),
+                  ]),
+                ),
               ),
             ),
           ),
@@ -97,82 +133,128 @@ class _TokenScreenState extends State<TokenScreen> {
         }
       });
 
+  Widget _key(String k, void Function(String) press) {
+    if (k.isEmpty) return const SizedBox();
+    return Semantics(
+      button: true,
+      label: k == 'del' ? 'Hapus digit' : 'Angka $k',
+      child: Material(
+        color: k == 'del' ? Colors.transparent : C.bg,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => press(k),
+          child: Center(child: k == 'del' ? const Ic.path('M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1zM12 9l6 6M18 9l-6 6', size: 24) : Text(k, style: ts(22, w: FontWeight.w600))),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
-    return SubPage(
-      title: 'Verifikasi Token',
-      scroll: false,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-      body: Column(children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Masukkan Token', style: ts(22, w: FontWeight.w800)),
-            const Gap(8),
-            Text('Ketik 6 digit token yang dikirim ke nomor terdaftar Anda (0812 •••• 7890).', style: ts(14, c: C.muted, h: 1.5)),
-          ]),
-        ),
-        const Gap(24),
-        Row(children: [
-          for (var i = 0; i < 6; i++) ...[
-            if (i > 0) const Gap(0, w: 8),
-            Expanded(
-              child: Container(
-                height: 56,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: i == code.length ? C.blue : (i < code.length ? const Color(0xFF8FA6C3) : C.input),
-                    width: i == code.length ? 2 : 1,
-                  ),
+    final complete = code.length == 6;
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: ScrollFill(child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Semantics(
+                button: true,
+                label: 'Kembali ke login',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => Navigator.maybePop(context),
+                  child: const SizedBox(width: 44, height: 44, child: Center(child: Ic('back', size: 22, stroke: 2))),
                 ),
-                child: Text(i < code.length ? code[i] : '', style: ts(24, w: FontWeight.w800)),
               ),
             ),
-          ]
-        ]),
-        const Gap(14),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('Tidak menerima token? ', style: ts(14, c: C.muted)),
-          GestureDetector(
-            onTap: () => setState(() => resent = true),
-            child: Text(resent ? 'Terkirim ulang' : 'Kirim ulang', style: ts(14, w: FontWeight.w700, c: C.blue)),
           ),
-        ]),
-        const Spacer(),
-        GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: 2.2,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            for (final k in keys)
-              if (k.isEmpty)
-                const SizedBox()
-              else
-                Material(
-                  color: k == 'del' ? Colors.transparent : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => press(k),
-                    child: Container(
-                      alignment: Alignment.center,
-                      decoration: k == 'del' ? null : BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: C.line)),
-                      child: k == 'del' ? const Icon(Icons.backspace_outlined) : Text(k, style: ts(22, w: FontWeight.w700)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(16)),
+                child: const Center(child: Ic('shield', size: 28, color: C.blue)),
+              ),
+              const Gap(10),
+              const Gap(8),
+              Text('Masukkan Token', style: ts(26, w: FontWeight.w800)),
+              const Gap(10),
+              Text('Ketik 6 digit token yang dikirim ke nomor terdaftar Anda (0812 •••• 7890).', style: ts(15, c: C.muted, h: 1.5, w: FontWeight.w400)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(children: [
+              for (var i = 0; i < 6; i++) ...[
+                if (i > 0) const Gap(0, w: 10),
+                Expanded(
+                  child: Container(
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: i == code.length ? C.blue : (i < code.length ? const Color(0xFF8FA6C3) : C.input), width: i == code.length ? 2 : 1),
                     ),
+                    child: Text(i < code.length ? code[i] : '', style: ts(24, w: FontWeight.w800)),
                   ),
                 ),
-          ],
-        ),
-        const Gap(14),
-        PrimaryButton('Verifikasi & Masuk', height: 54, onTap: code.length == 6 ? () => Navigator.pushNamedAndRemoveUntil(context, R.home, (r) => false) : null),
-      ]),
+              ]
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Flexible(child: Text('Tidak menerima token?', style: ts(14, c: C.muted, w: FontWeight.w400))),
+              InkWell(
+                onTap: () => setState(() => resent = true),
+                child: SizedBox(height: 44, child: Center(child: Text(resent ? 'Terkirim ulang' : 'Kirim ulang', style: ts(14, w: FontWeight.w700, c: C.blue)))),
+              ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: Material(
+              color: complete ? C.blue : C.line,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: complete ? () => Navigator.pushNamedAndRemoveUntil(context, R.home, (r) => false) : null,
+                child: SizedBox(
+                  height: 54,
+                  width: double.infinity,
+                  child: Center(child: Text('Verifikasi & Masuk', style: ts(16, w: FontWeight.w700, c: complete ? Colors.white : C.muted))),
+                ),
+              ),
+            ),
+          ),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(children: [
+              for (var r = 0; r < 4; r++) ...[
+                if (r > 0) const SizedBox(height: 8),
+                SizedBox(
+                  height: 56,
+                  child: Row(children: [
+                    for (var c = 0; c < 3; c++) ...[
+                      if (c > 0) const SizedBox(width: 8),
+                      Expanded(child: _key(keys[r * 3 + c], press)),
+                    ],
+                  ]),
+                ),
+              ],
+            ]),
+          ),
+        ])),
+      ),
     );
   }
 }

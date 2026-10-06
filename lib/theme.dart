@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class C {
   static const navy = Color(0xFF0E2A47);
@@ -37,8 +36,22 @@ ThemeData buildTheme() {
     colorScheme: ColorScheme.fromSeed(seedColor: C.blue, primary: C.blue, surface: Colors.white),
     scaffoldBackgroundColor: C.bg,
   );
+  TextStyle? z(TextStyle? s) => s?.copyWith(letterSpacing: 0);
+  final tt = base.textTheme.apply(fontFamily: 'PlusJakartaSans', bodyColor: C.text, displayColor: C.text);
   return base.copyWith(
-    textTheme: GoogleFonts.plusJakartaSansTextTheme(base.textTheme).apply(bodyColor: C.text, displayColor: C.text),
+    textTheme: tt.copyWith(
+      displayLarge: z(tt.displayLarge), displayMedium: z(tt.displayMedium), displaySmall: z(tt.displaySmall),
+      headlineLarge: z(tt.headlineLarge), headlineMedium: z(tt.headlineMedium), headlineSmall: z(tt.headlineSmall),
+      titleLarge: z(tt.titleLarge), titleMedium: z(tt.titleMedium), titleSmall: z(tt.titleSmall),
+      bodyLarge: z(tt.bodyLarge), bodyMedium: z(tt.bodyMedium), bodySmall: z(tt.bodySmall),
+      labelLarge: z(tt.labelLarge), labelMedium: z(tt.labelMedium), labelSmall: z(tt.labelSmall),
+    ),
     splashFactory: InkRipple.splashFactory,
   );
 }
+
+/// Membatasi skala teks sistem agar tata letak tetap rapi (0,9x – 1,15x).
+Widget appBuilder(BuildContext context, Widget? child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: MediaQuery.textScalerOf(context).clamp(minScaleFactor: .9, maxScaleFactor: 1.15)),
+      child: child ?? const SizedBox.shrink(),
+    );

@@ -10,9 +10,9 @@ class FtwScreen extends StatefulWidget {
 
 class _FtwScreenState extends State<FtwScreen> {
   final ans = <String, String>{};
-  bool sent = false;
+  bool done = false;
 
-  static const qs = [
+  static const defs = [
     ('tidur', 'Berapa jam Anda tidur dalam 24 jam terakhir?', ['< 4 jam', '4 – 6 jam', '> 6 jam'], 'Jam tidur'),
     ('kondisi', 'Bagaimana kondisi badan Anda saat ini?', ['Sehat', 'Kurang fit', 'Sakit'], 'Kondisi badan'),
     ('obat', 'Apakah Anda minum obat yang menyebabkan kantuk?', ['Ya', 'Tidak'], 'Obat penyebab kantuk'),
@@ -21,61 +21,141 @@ class _FtwScreenState extends State<FtwScreen> {
 
   String get level {
     if (ans['tidur'] == '< 4 jam' || ans['kondisi'] == 'Sakit' || ans['alkohol'] == 'Ya') return 'unfit';
-    if (ans['kondisi'] == 'Kurang fit' || ans['tidur'] == '4 – 6 jam' || ans['obat'] == 'Ya') return 'caution';
+    if (ans['kondisi'] == 'Kurang fit' || ans['obat'] == 'Ya' || ans['tidur'] == '4 – 6 jam') return 'check';
     return 'fit';
   }
 
+  Widget _card(Widget child) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+        child: child,
+      );
+
+  Widget _opt(String label, bool on, VoidCallback tap) => Expanded(
+        child: Material(
+          color: on ? C.blueSoft : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: on ? C.blue : C.input, width: on ? 2 : 1)),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: tap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Center(child: Text(label, textAlign: TextAlign.center, style: ts(14, w: on ? FontWeight.w700 : FontWeight.w600, c: on ? C.blueFg : C.text2))),
+              ),
+            ),
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final ready = qs.every((q) => ans.containsKey(q.$1));
-    if (sent) {
-      final (icon, color, title, text) = switch (level) {
-        'unfit' => (Icons.cancel, C.red, 'Belum layak bekerja', 'Jawaban Anda menunjukkan kondisi tidak fit. Hubungi atasan dan klinik sebelum memulai shift.'),
-        'caution' => (Icons.warning_amber_rounded, C.orange, 'Fit dengan catatan', 'Atasan akan mendapat notifikasi. Tetap waspada dan laporkan bila kondisi memburuk.'),
-        _ => (Icons.check_circle, C.green, 'Anda fit untuk bekerja', 'Terima kasih sudah mengisi. Selamat bekerja dan tetap utamakan keselamatan.'),
-      };
-      return SubPage(
-        title: 'Fit To Work',
-        body: ResultView(icon: icon, color: color, title: title, text: text, children: [
-          SummaryBox([for (final q in qs) (q.$4, ans[q.$1] ?? '-'), ('Waktu kirim', '06:40')]),
-          const Gap(16),
-          PrimaryButton('Kembali ke Beranda', onTap: () => Navigator.pop(context)),
-          TextButton(onPressed: () => setState(() { sent = false; ans.clear(); }), child: Text('Isi ulang (demo)', style: ts(13, c: C.muted))),
+    final ready = defs.every((q) => ans.containsKey(q.$1));
+    return Scaffold(
+      backgroundColor: C.bg,
+      body: SafeArea(
+        child: Column(children: [
+          const PageHeader('Fit To Work'),
+          Expanded(child: done ? _result() : _form(ready)),
         ]),
-      );
-    }
-    return SubPage(
-      title: 'Pengisian Fit To Work',
-      bottom: PrimaryButton(ready ? 'Kirim Fit To Work' : 'Jawab semua pertanyaan', onTap: ready ? () => setState(() => sent = true) : null),
-      body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Fit To Work', style: ts(22, w: FontWeight.w800)),
-        Text('Sabtu, 3 Oktober 2026 · Day shift · 07:00 – 19:00', style: ts(13, c: C.muted)),
-        const Gap(14),
-        AppCard(
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            for (final w in const [('Sab', 1), ('Min', 1), ('Sen', 1), ('Sel', 1), ('Rab', 1), ('Kam', 1), ('Hari ini', 0)])
+      ),
+    );
+  }
+
+  Widget _form(bool ready) => SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Sabtu, 3 Oktober 2026', style: ts(13, c: C.muted, h: 1.45)),
+          Text('Day shift · 07:00 – 19:00', style: ts(15, w: FontWeight.w700, h: 1.45)),
+          for (var i = 0; i < defs.length; i++) ...[
+            const Gap(14),
+            _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${i + 1}. ${defs[i].$2}', style: ts(15, w: FontWeight.w700, h: 1.4)),
+              const Gap(10),
+              Row(children: [
+                for (var k = 0; k < defs[i].$3.length; k++) ...[
+                  if (k > 0) const Gap(0, w: 8),
+                  _opt(defs[i].$3[k], ans[defs[i].$1] == defs[i].$3[k], () => setState(() => ans[defs[i].$1] = defs[i].$3[k])),
+                ],
+              ]),
+            ])),
+          ],
+          const Gap(14),
+          _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('5. Keluhan lain (opsional)', style: ts(15, w: FontWeight.w700)),
+            const Gap(8),
+            TextField(
+              minLines: 2,
+              maxLines: 2,
+              style: ts(15),
+              decoration: InputDecoration(
+                hintText: 'Contoh: pusing, nyeri punggung',
+                hintStyle: ts(15, c: const Color(0xFF757575)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                isDense: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.input)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.input)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.blue, width: 2)),
+              ),
+            ),
+          ])),
+          const Gap(14),
+          PrimaryButton(ready ? 'Kirim Fit To Work' : 'Jawab semua pertanyaan', height: 54, onTap: ready ? () => setState(() => done = true) : null),
+          const Gap(14),
+          _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('7 hari terakhir', style: ts(14, w: FontWeight.w800)),
+            const Gap(12),
+            Row(children: [
+              for (final d in const ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum'])
+                Expanded(
+                  child: Column(children: [
+                    Container(width: 32, height: 32, decoration: const BoxDecoration(color: C.greenBg, shape: BoxShape.circle), child: const Center(child: Ic('check', size: 16, stroke: 2.4, color: C.greenFg))),
+                    const Gap(4),
+                    Text(d, style: ts(11, c: C.muted)),
+                  ]),
+                ),
               Expanded(
                 child: Column(children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: w.$2 == 1 ? C.greenBg : C.chip, shape: BoxShape.circle),
-                    child: Text(w.$2 == 1 ? '✓' : '?', style: ts(12, w: FontWeight.w800, c: w.$2 == 1 ? C.greenFg : C.muted)),
-                  ),
+                  Container(width: 32, height: 32, alignment: Alignment.center, decoration: const BoxDecoration(color: C.orangeBg, shape: BoxShape.circle), child: Text('?', style: ts(14, w: FontWeight.w800, c: C.orangeFg))),
                   const Gap(4),
-                  Text(w.$1, style: ts(10, c: C.muted), textAlign: TextAlign.center),
+                  Text('Hari ini', style: ts(11, c: C.muted)),
                 ]),
               ),
-          ]),
-        ),
-        const Gap(4),
-        Text('7 hari terakhir', style: ts(11, c: C.muted)),
+            ]),
+          ])),
+        ]),
+      );
+
+  Widget _result() {
+    final (t, c, bg, p, x) = switch (level) {
+      'unfit' => ('TIDAK FIT', C.red, C.redBg, 'M6 6l12 12M18 6L6 18', 'Anda belum boleh bekerja. Segera laporkan ke atasan dan petugas medis.'),
+      'check' => ('PERLU PEMERIKSAAN', C.orangeFg, C.orangeBg, 'M12 7v6M12 17h.01', 'Silakan temui petugas medis di klinik sebelum memulai shift. Atasan Anda sudah diberi tahu.'),
+      _ => ('FIT', C.greenFg, C.greenBg, 'M5 12l4.5 4.5L19 7', 'Anda dinyatakan fit untuk bekerja hari ini. Selamat bekerja dan utamakan keselamatan.'),
+    };
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      child: Column(children: [
+        Container(width: 88, height: 88, decoration: BoxDecoration(color: bg, shape: BoxShape.circle), child: Center(child: Ic.path(p, size: 44, stroke: 2.2, color: c))),
         const Gap(14),
-        for (var i = 0; i < qs.length; i++)
-          LabeledField('${i + 1}. ${qs[i].$2}', ChoiceRow(options: qs[i].$3, selected: ans[qs[i].$1] ?? '', onSelect: (v) => setState(() => ans[qs[i].$1] = v))),
-        const TextBox('5. Keluhan lain (opsional)', lines: 3, hint: 'Tuliskan bila ada'),
+        Text(t, style: ts(26, w: FontWeight.w800, c: c)),
+        const Gap(14),
+        ConstrainedBox(constraints: const BoxConstraints(maxWidth: 300), child: Text(x, textAlign: TextAlign.center, style: ts(15, c: C.text2, h: 1.55))),
+        const Gap(14),
+        _card(Column(children: [
+          for (final q in defs)
+            Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(q.$4, style: ts(14, c: C.muted)), Text(ans[q.$1] ?? '-', style: ts(14, w: FontWeight.w700))])),
+          Container(
+            padding: const EdgeInsets.only(top: 8),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFEEF1F5)))),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Waktu kirim', style: ts(14, c: C.muted)), Text('06:40', style: ts(14, w: FontWeight.w700))]),
+          ),
+        ])),
+        const Gap(22),
+        PrimaryButton('Kembali ke Beranda', onTap: () => Navigator.pop(context)),
+        const Gap(14),
+        InkWell(onTap: () => setState(() { done = false; ans.clear(); }), child: SizedBox(height: 44, child: Center(child: Text('Isi ulang (demo)', style: ts(14, w: FontWeight.w700, c: C.blue))))),
       ]),
     );
   }

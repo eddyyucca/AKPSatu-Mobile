@@ -11,7 +11,8 @@ class AkpSatuApp extends StatelessWidget {
         title: 'AKPSatu',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
-        initialRoute: R.login,
+        builder: appBuilder,
+        initialRoute: R.splash,
         routes: routes,
       );
 }

@@ -1,18 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../widgets.dart';
-
-class AttendanceScreen extends StatelessWidget {
-  const AttendanceScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const SubPage(title: 'Riwayat Absensi', body: AttendanceBody());
-}
-
-class AttendanceBody extends StatefulWidget {
-  const AttendanceBody({super.key});
-  @override
-  State<AttendanceBody> createState() => _AttendanceBodyState();
-}
+import 'shell.dart';
 
 class _Rec {
   final String d, wd, inT, outT;
@@ -20,7 +9,13 @@ class _Rec {
   const _Rec(this.d, this.wd, this.inT, this.outT, {this.late = false});
 }
 
-class _AttendanceBodyState extends State<AttendanceBody> {
+class AttendancePage extends StatefulWidget {
+  const AttendancePage({super.key});
+  @override
+  State<AttendancePage> createState() => _AttendancePageState();
+}
+
+class _AttendancePageState extends State<AttendancePage> {
   int i = 1;
   static const months = [
     ('September 2026', 23, 2, 0, '7 catatan terakhir', [
@@ -38,60 +33,83 @@ class _AttendanceBodyState extends State<AttendanceBody> {
     ]),
   ];
 
+  Widget _navBtn(String label, VoidCallback onTap, {bool flip = false}) => Semantics(
+        button: true,
+        label: label,
+        child: Material(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: C.input)),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: SizedBox(width: 44, height: 44, child: Center(child: Transform.flip(flipX: flip, child: const Ic('back', size: 20, stroke: 2)))),
+          ),
+        ),
+      );
+
+  // Mockup: angka dibungkus <span> yang terkena `.sm span` (12px, abu-abu) di dalam <b> setinggi 28px,
+  // lalu label di baris 21px.
+  Widget _sm(int v, String l, Color c) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(12)),
+          child: Column(children: [
+            SizedBox(height: 28, child: Padding(padding: const EdgeInsets.only(top: 10), child: Text('$v', style: ts(12, w: FontWeight.w800, c: C.muted)))),
+            Padding(padding: const EdgeInsets.only(top: 5, bottom: 1), child: Text(l, style: ts(12, c: C.muted))),
+          ]),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final m = months[i];
-    Widget stat(int v, String l, Color c) => Expanded(
-          child: AppCard(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(children: [
-              Text('$v', style: ts(22, w: FontWeight.w800, c: c)),
-              Text(l, style: ts(12, c: C.muted)),
-            ]),
-          ),
-        );
     return Column(children: [
-      Row(children: [
-        IconButton(tooltip: 'Bulan sebelumnya', onPressed: i > 0 ? () => setState(() => i--) : null, icon: const Icon(Icons.chevron_left)),
-        Expanded(child: Text(m.$1, textAlign: TextAlign.center, style: ts(16, w: FontWeight.w800))),
-        IconButton(tooltip: 'Bulan berikutnya', onPressed: i < months.length - 1 ? () => setState(() => i++) : null, icon: const Icon(Icons.chevron_right)),
-      ]),
-      Row(children: [
-        stat(m.$2, 'Hadir', C.green),
-        const Gap(0, w: 10),
-        stat(m.$3, 'Terlambat', C.orange),
-        const Gap(0, w: 10),
-        stat(m.$4, 'Tidak hadir', C.red),
-      ]),
-      const Gap(14),
-      Align(alignment: Alignment.centerLeft, child: Text(m.$5, style: ts(13, c: C.muted))),
-      const Gap(8),
-      for (final r in m.$6)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: AppCard(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              Container(
-                width: 48,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(color: C.bg, borderRadius: BorderRadius.circular(10)),
-                child: Column(children: [
-                  Text(r.d, style: ts(18, w: FontWeight.w800)),
-                  Text(r.wd, style: ts(11, c: C.muted)),
-                ]),
+      TabHeader('Riwayat Absensi',
+          extra: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            _navBtn('Bulan sebelumnya', () => setState(() => i = (i - 1).clamp(0, months.length - 1))),
+            Text(m.$1, style: ts(16, w: FontWeight.w700)),
+            _navBtn('Bulan berikutnya', () => setState(() => i = (i + 1).clamp(0, months.length - 1)), flip: true),
+          ])),
+      Expanded(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [_sm(m.$2, 'Hadir', C.greenFg), const Gap(0, w: 10), _sm(m.$3, 'Terlambat', C.orangeFg), const Gap(0, w: 10), _sm(m.$4, 'Tidak hadir', C.red)]),
+            const Gap(16),
+            Text(m.$5, style: ts(13, c: C.muted)),
+            for (final r in m.$6)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+                  child: IntrinsicHeight(
+                    child: Row(children: [
+                      SizedBox(
+                        width: 48,
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          Text(r.d, style: ts(20, w: FontWeight.w800, h: 1.15)),
+                          Text(r.wd, style: ts(12, c: C.muted, h: 1.15)),
+                        ]),
+                      ),
+                      const Gap(0, w: 14),
+                      Container(width: 1, color: const Color(0xFFEEF1F5)),
+                      const Gap(0, w: 14),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Text('Day shift · 07:00 – 19:00', style: ts(13, c: C.muted, h: 18.85 / 13)),
+                          Text('Masuk ${r.inT} · Pulang ${r.outT}', style: ts(14, w: FontWeight.w700, h: 20.3 / 14)),
+                        ]),
+                      ),
+                      const Gap(0, w: 14),
+                      Center(child: Pill(r.late ? 'Terlambat' : 'Tepat waktu', tone: r.late ? Tone.warn : Tone.ok)),
+                    ]),
+                  ),
+                ),
               ),
-              const Gap(0, w: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Day shift · 07:00 – 19:00', style: ts(13, w: FontWeight.w600)),
-                  Text('Masuk ${r.inT} · Pulang ${r.outT}', style: ts(13, c: C.muted)),
-                ]),
-              ),
-              Pill(r.late ? 'Terlambat' : 'Tepat waktu', tone: r.late ? Tone.warn : Tone.ok),
-            ]),
-          ),
+          ]),
         ),
+      ),
     ]);
   }
 }

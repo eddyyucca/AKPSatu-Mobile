@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'icons_data.dart';
 import 'theme.dart';
 
 enum Tone { ok, warn, bad, info, neutral, purple }
@@ -20,8 +23,12 @@ Color toneFg(Tone t) => switch (t) {
       Tone.neutral => C.text2,
     };
 
-TextStyle ts(double size, {FontWeight w = FontWeight.w500, Color c = C.text, double? h}) =>
-    TextStyle(fontSize: size, fontWeight: w, color: c, height: h);
+/// Tinggi baris 'normal' (px) Plus Jakarta Sans di Chrome, diukur dari mockup.
+const _normalPx = {9: 11, 10: 12, 11: 13, 12: 15, 13: 16, 14: 18, 15: 19, 16: 21, 17: 22, 18: 23, 20: 25, 22: 28, 24: 30, 26: 33, 28: 35, 30: 38, 56: 70};
+double normalLine(double size) => (_normalPx[size.round()] ?? (size * 1.26).round()) / size;
+
+TextStyle ts(double size, {FontWeight w = FontWeight.w400, Color c = C.text, double? h}) =>
+    TextStyle(inherit: false, textBaseline: TextBaseline.alphabetic, fontFamily: 'PlusJakartaSans', letterSpacing: 0, fontSize: size, fontWeight: w, color: c, height: h ?? normalLine(size));
 
 class Pill extends StatelessWidget {
   final String text;
@@ -31,7 +38,7 @@ class Pill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(color: toneBg(tone), borderRadius: BorderRadius.circular(99)),
-        child: Text(text, style: ts(12, w: FontWeight.w700, c: toneFg(tone))),
+        child: Text(text, style: ts(12, w: FontWeight.w600, c: toneFg(tone))),
       );
 }
 
@@ -62,16 +69,7 @@ class Logo extends StatelessWidget {
   final double size;
   const Logo({super.key, this.size = 40});
   @override
-  Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [C.blue, Color(0xFF3F86F0)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-          borderRadius: BorderRadius.circular(size * .28),
-        ),
-        child: Text('A1', style: ts(size * .4, w: FontWeight.w800, c: Colors.white)),
-      );
+  Widget build(BuildContext context) => Image.asset('assets/logo.png', width: size, height: size, semanticLabel: 'Logo AKPSatu');
 }
 
 class IconBox extends StatelessWidget {
@@ -108,28 +106,30 @@ class PrimaryButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Color color;
   final IconData? icon;
+  final String? ic;
   final double height;
-  const PrimaryButton(this.label, {super.key, this.onTap, this.color = C.blue, this.icon, this.height = 52});
+  const PrimaryButton(this.label, {super.key, this.onTap, this.color = C.blue, this.icon, this.ic, this.height = 52});
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: double.infinity,
-        height: height,
-        child: FilledButton(
-          onPressed: onTap,
-          style: FilledButton.styleFrom(
-            backgroundColor: color,
-            disabledBackgroundColor: const Color(0xFFC4CDD9),
-            foregroundColor: Colors.white,
-            disabledForegroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle: ts(15, w: FontWeight.w700),
-          ),
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return SizedBox(
+      width: double.infinity,
+      height: height,
+      child: Material(
+        color: enabled ? color : C.line,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
-            Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            if (ic != null) ...[Ic(ic!, size: 20, stroke: 2, color: enabled ? Colors.white : C.muted), const SizedBox(width: 8)],
+            if (icon != null) ...[Icon(icon, size: 20, color: enabled ? Colors.white : C.muted), const SizedBox(width: 8)],
+            Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: ts(16, w: FontWeight.w700, c: enabled ? Colors.white : C.muted))),
           ]),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class OutlineButton extends StatelessWidget {
@@ -155,6 +155,44 @@ class OutlineButton extends StatelessWidget {
       );
 }
 
+/// Tombol kembali header (44x44, ikon 22 stroke 2).
+class BackBtn extends StatelessWidget {
+  final VoidCallback? onTap;
+  final String label;
+  const BackBtn({super.key, this.onTap, this.label = 'Kembali'});
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: label,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap ?? () => Navigator.of(context).maybePop(),
+          child: const SizedBox(width: 44, height: 44, child: Center(child: Ic('back', size: 22, stroke: 2))),
+        ),
+      );
+}
+
+/// Header halaman: [<] Judul ........ trailing. Sama dengan `<header>` pada mockup.
+class PageHeader extends StatelessWidget {
+  final String title;
+  final Widget? trailing;
+  final bool border;
+  final EdgeInsets padding;
+  final Color color;
+  const PageHeader(this.title, {super.key, this.trailing, this.border = true, this.padding = const EdgeInsets.fromLTRB(8, 12, 8, 12), this.color = Colors.white});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: padding,
+        decoration: BoxDecoration(color: color, border: border ? const Border(bottom: BorderSide(color: C.line)) : null),
+        child: Row(children: [
+          const BackBtn(),
+          const SizedBox(width: 4),
+          Expanded(child: Text(title, style: ts(18, w: FontWeight.w800))),
+          if (trailing != null) trailing!,
+        ]),
+      );
+}
+
 /// Halaman dengan header putih + tombol kembali.
 class SubPage extends StatelessWidget {
   final String title;
@@ -172,39 +210,20 @@ class SubPage extends StatelessWidget {
     this.bottom,
     this.actions,
     this.scroll = true,
-    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 24),
+    this.padding = const EdgeInsets.all(16),
   });
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: C.bg,
         body: SafeArea(
           child: Column(children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(4, 6, 8, 6),
-              decoration: null,
-              child: Row(children: [
-                IconButton(
-                  tooltip: 'Kembali',
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.arrow_back, color: C.text),
-                ),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, style: ts(17, w: FontWeight.w800)),
-                    if (subtitle != null) Text(subtitle!, style: ts(12, c: C.muted)),
-                  ]),
-                ),
-                ...?actions,
-              ]),
-            ),
-            const Divider(height: 1, color: C.line),
+            PageHeader(title, trailing: actions == null ? null : Row(mainAxisSize: MainAxisSize.min, children: actions!)),
             Expanded(
               child: scroll ? SingleChildScrollView(padding: padding, child: body) : Padding(padding: padding, child: body),
             ),
             if (bottom != null)
               Container(
-                color: Colors.white,
+                decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: C.line))),
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                 child: bottom,
               ),
@@ -353,28 +372,29 @@ class ChoiceRow extends StatelessWidget {
   }
 }
 
-/// Tab segmen (Aktif / Riwayat dst.).
+/// Tab segmen (Aktivitas / Riwayat dst.): tinggi 40, radius 9.
 class Seg extends StatelessWidget {
   final List<String> tabs;
   final int index;
   final ValueChanged<int> onChange;
-  const Seg({super.key, required this.tabs, required this.index, required this.onChange});
+  final double gap;
+  const Seg({super.key, required this.tabs, required this.index, required this.onChange, this.gap = 8});
   @override
   Widget build(BuildContext context) => Row(children: [
         for (var i = 0; i < tabs.length; i++) ...[
-          if (i > 0) const Gap(0, w: 8),
+          if (i > 0) SizedBox(width: gap),
           Expanded(
-            child: SizedBox(
-              height: 40,
-              child: TextButton(
-                onPressed: () => onChange(i),
-                style: TextButton.styleFrom(
-                  backgroundColor: i == index ? C.navy : Colors.white,
-                  foregroundColor: i == index ? Colors.white : C.text2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9), side: BorderSide(color: i == index ? C.navy : C.input)),
-                  textStyle: ts(14, w: i == index ? FontWeight.w700 : FontWeight.w600),
+            child: Semantics(
+              button: true,
+              selected: i == index,
+              child: Material(
+                color: i == index ? C.navy : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9), side: i == index ? BorderSide.none : const BorderSide(color: C.input)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(9),
+                  onTap: () => onChange(i),
+                  child: SizedBox(height: 40, child: Center(child: Text(tabs[i], style: ts(14, w: i == index ? FontWeight.w700 : FontWeight.w600, c: i == index ? Colors.white : C.text2)))),
                 ),
-                child: Text(tabs[i]),
               ),
             ),
           ),
@@ -584,3 +604,152 @@ Future<T?> sheet<T>(BuildContext c, Widget Function(BuildContext) b) => showModa
         child: b(ctx),
       ),
     );
+
+
+String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+/// Ikon stroke bergaya mockup (viewBox 24, stroke 1.8). [name] = kunci di kIcons.
+class Ic extends StatelessWidget {
+  final String? name;
+  final String? path;
+  final double size;
+  final Color color;
+  final double stroke;
+  const Ic(this.name, {super.key, this.size = 20, this.color = C.text, this.stroke = 1.8}) : path = null;
+  const Ic.path(this.path, {super.key, this.size = 20, this.color = C.text, this.stroke = 1.8}) : name = null;
+  @override
+  Widget build(BuildContext context) {
+    final inner = path != null ? '<path d="$path"/>' : (kIcons[name] ?? '');
+    return SvgPicture.string(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${_hex(color)}" '
+      'stroke-width="$stroke" stroke-linecap="round" stroke-linejoin="round">$inner</svg>',
+      width: size,
+      height: size,
+    );
+  }
+}
+
+
+/// Setara `margin-top: -by` pada CSS: anak digeser ke atas dan tinggi layout berkurang.
+class PullUp extends SingleChildRenderObjectWidget {
+  final double by;
+  const PullUp({super.key, required this.by, required super.child});
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderPullUp(by);
+  @override
+  void updateRenderObject(BuildContext context, covariant _RenderPullUp r) => r.by = by;
+}
+
+class _RenderPullUp extends RenderShiftedBox {
+  _RenderPullUp(this._by) : super(null);
+  double _by;
+  set by(double v) {
+    if (v != _by) {
+      _by = v;
+      markNeedsLayout();
+    }
+  }
+
+  @override
+  void performLayout() {
+    child!.layout(constraints, parentUsesSize: true);
+    size = constraints.constrain(Size(child!.size.width, child!.size.height - _by));
+    (child!.parentData! as BoxParentData).offset = Offset(0, -_by);
+  }
+}
+
+/// Garis putus-putus horizontal (border-bottom: dashed).
+class DashedLine extends StatelessWidget {
+  final Color color;
+  final double thickness;
+  const DashedLine({super.key, this.color = C.input, this.thickness = 1.5});
+  @override
+  Widget build(BuildContext context) => SizedBox(width: double.infinity, height: thickness, child: CustomPaint(painter: _DashPainter(color, thickness)));
+}
+
+class _DashPainter extends CustomPainter {
+  final Color color;
+  final double t;
+  _DashPainter(this.color, this.t);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = color..strokeWidth = t;
+    for (double x = 0; x < size.width; x += 6) {
+      canvas.drawLine(Offset(x, t / 2), Offset((x + 3).clamp(0, size.width), t / 2), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+/// Kotak putih bergaris (class `.card`): padding 16, radius 14.
+class Card14 extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  final Color color;
+  final Color border;
+  final VoidCallback? onTap;
+  const Card14({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.color = Colors.white, this.border = C.line, this.onTap});
+  @override
+  Widget build(BuildContext context) => Material(
+        color: color,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: border)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: onTap, child: SizedBox(width: double.infinity, child: Padding(padding: padding, child: child))),
+      );
+}
+
+/// Kotak bertepi putus-putus (border: dashed) dengan sudut membulat.
+class DashedRRect extends StatelessWidget {
+  final Widget child;
+  final double radius;
+  final Color color;
+  final Color? fill;
+  final double strokeWidth;
+  final double height;
+  const DashedRRect({super.key, required this.child, this.radius = 10, this.color = const Color(0xFFB8C4D4), this.fill, this.strokeWidth = 1.5, this.height = 64});
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        painter: _DashRRectPainter(radius, color, fill, strokeWidth),
+        child: SizedBox(width: double.infinity, height: height, child: child),
+      );
+}
+
+class _DashRRectPainter extends CustomPainter {
+  final double r;
+  final Color color;
+  final Color? fill;
+  final double w;
+  _DashRRectPainter(this.r, this.color, this.fill, this.w);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rr = RRect.fromRectAndRadius(Rect.fromLTWH(w / 2, w / 2, size.width - w, size.height - w), Radius.circular(r));
+    if (fill != null) canvas.drawRRect(rr, Paint()..color = fill!);
+    final path = Path()..addRRect(rr);
+    final p = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = w;
+    for (final m in path.computeMetrics()) {
+      var d = 0.0;
+      while (d < m.length) {
+        canvas.drawPath(m.extractPath(d, (d + 4).clamp(0, m.length)), p);
+        d += 7;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+
+/// Isi penuh layar tapi bisa digulir bila konten lebih tinggi dari layar (untuk layar pendek / teks besar).
+class ScrollFill extends StatelessWidget {
+  final Widget child;
+  const ScrollFill({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (_, box) => SingleChildScrollView(
+          child: ConstrainedBox(constraints: BoxConstraints(minHeight: box.maxHeight), child: IntrinsicHeight(child: child)),
+        ),
+      );
+}

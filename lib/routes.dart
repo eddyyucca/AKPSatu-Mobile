@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/activity.dart';
 import 'screens/approval.dart';
-import 'screens/attendance.dart';
 import 'screens/auth.dart';
 import 'screens/camp.dart';
 import 'screens/driver.dart';
@@ -16,9 +15,13 @@ import 'screens/ptw.dart';
 import 'screens/requests.dart';
 import 'screens/roster.dart';
 import 'screens/shell.dart';
-import 'screens/travel.dart';
+import 'screens/trip.dart';
+import 'screens/itinerary.dart';
+import 'screens/profile.dart';
+import 'screens/splash.dart';
 
 class R {
+  static const splash = '/splash';
   static const login = '/';
   static const token = '/token';
   static const home = '/home';
@@ -27,6 +30,10 @@ class R {
   static const cuti = '/cuti';
   static const ftw = '/ftw';
   static const makan = '/makan';
+  static const profil = '/profil';
+  static const detailProfil = '/profil/detail';
+  static const ubahPassword = '/profil/password';
+  static const privasi = '/profil/privasi';
   static const fitness = '/fitness';
   static const fitnessRecord = '/fitness/rekam';
   static const camp = '/camp';
@@ -49,17 +56,23 @@ class R {
 }
 
 final Map<String, WidgetBuilder> routes = {
+  R.splash: (_) => const SplashScreen(),
   R.login: (_) => const LoginScreen(),
   R.token: (_) => const TokenScreen(),
   R.home: (_) => const MainShell(),
-  R.absensi: (_) => const AttendanceScreen(),
+  R.absensi: (_) => const MainShell(initialIndex: 1),
+  R.makan: (_) => const MainShell(initialIndex: 2),
+  R.profil: (_) => const MainShell(initialIndex: 3),
+  R.detailProfil: (_) => const DetailProfileScreen(),
+  R.ubahPassword: (_) => const ChangePasswordScreen(),
+  R.privasi: (_) => const PrivacyScreen(),
   R.roster: (_) => const RosterScreen(),
   R.cuti: (_) => const LeaveScreen(),
   R.ftw: (_) => const FtwScreen(),
   R.fitness: (_) => const FitnessScreen(),
   R.fitnessRecord: (_) => const FitnessRecordScreen(),
   R.camp: (_) => const CampScreen(),
-  R.perjalanan: (_) => const TravelScreen(),
+  R.perjalanan: (_) => const TripScreen(),
   R.notifikasi: (_) => const NotifScreen(),
   R.notifPush: (_) => const NotifPushScreen(),
   R.pengajuanCuti: (_) => const LeaveRequestScreen(),

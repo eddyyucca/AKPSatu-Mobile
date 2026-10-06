@@ -10,6 +10,11 @@ class _Tr {
   const _Tr(this.id, this.cat, this.title, this.trainer, this.when, this.room, this.roomOk, this.n, this.max, {this.mandatory = false, this.by = '', this.warn = ''});
 }
 
+class _Past {
+  final String cat, title, trainer, when, room, result, cert;
+  const _Past(this.cat, this.title, this.trainer, this.when, this.room, this.result, this.cert);
+}
+
 class LearningScreen extends StatefulWidget {
   const LearningScreen({super.key});
   @override
@@ -17,7 +22,7 @@ class LearningScreen extends StatefulWidget {
 }
 
 class _LearningScreenState extends State<LearningScreen> {
-  int tab = 0;
+  String tab = 'sched';
   final enr = <String>{'cyber', 'excel'};
 
   static const sched = [
@@ -28,100 +33,143 @@ class _LearningScreenState extends State<LearningScreen> {
     _Tr('lead', 'SOFT SKILL', 'Leadership untuk Supervisor', 'HR Development', 'Sel, 27 Okt · 08:00 – 17:00', 'Aula Camp', true, 20, 30),
   ];
   static const past = [
-    ('K3', 'First Aid & CPR', 'Klinik Site', '15 Sep 2026 · 8 jam', 'Training Room A', 'Lulus · 88', 'Berlaku s/d Sep 2028'),
-    ('TEKNIS', 'Fortigate Firewall Administration', 'Vendor', '20 – 21 Agu 2026 · 16 jam', 'Lab Komputer', 'Lulus · 91', 'Berlaku s/d Agu 2029'),
-    ('K3', 'Induksi Keselamatan Tambang', 'HSE Department', '3 Mar 2026 · 4 jam', 'Aula Camp', 'Lulus · 95', 'Berlaku s/d Mar 2027'),
+    _Past('K3', 'First Aid & CPR', 'Klinik Site', '15 Sep 2026 · 8 jam', 'Training Room A', 'Lulus · 88', 'Berlaku s/d Sep 2028'),
+    _Past('TEKNIS', 'Fortigate Firewall Administration', 'Vendor', '20 – 21 Agu 2026 · 16 jam', 'Online', 'Lulus', 'Sertifikat vendor'),
+    _Past('WAJIB UMUM', 'Refreshment Induksi K3', 'HSE Department', '10 Jun 2026 · 4 jam', 'Aula Camp', 'Hadir', 'Berlaku s/d Jun 2027'),
   ];
 
-  (Color, Color) catColor(String c) => switch (c) {
-        'K3' => (C.redBg, const Color(0xFF9C2B1F)),
-        'TEKNIS' => (C.blueSoft, C.blueFg),
-        'SOFT SKILL' => (C.purpleBg, C.purple),
-        _ => (C.chip, C.navy),
-      };
-
-  Widget catPill(String c) {
-    final (bg, fg) = catColor(c);
+  Widget _cat(String c) {
+    final (bg, fg) = switch (c) {
+      'K3' => (C.redBg, const Color(0xFF9C2B1F)),
+      'TEKNIS' => (C.blueSoft, C.blueFg),
+      'SOFT SKILL' => (C.purpleBg, C.purple),
+      _ => (const Color(0xFFE3E8EF), C.navy),
+    };
     return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)), child: Text(c, style: ts(11, w: FontWeight.w800, c: fg)));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    Widget stat(String v, String l) => Expanded(child: Column(children: [Text(v, style: ts(20, w: FontWeight.w800, c: Colors.white)), Text(l, style: ts(11, c: C.pale))]));
-    final mine = sched.where((t) => enr.contains(t.id)).toList();
-    return SubPage(
-      title: 'Learning Center',
-      body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(color: C.navy, borderRadius: BorderRadius.circular(16)),
-          child: Row(children: [stat('5', 'Training 2026'), stat('32 j', 'Jam belajar'), stat('4', 'Sertifikat aktif')]),
+  Widget _mi(String ic, List<InlineSpan> t) => Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Ic(ic, size: 15, color: C.text2),
+        const Gap(0, w: 6),
+        Expanded(child: Text.rich(TextSpan(children: t), style: ts(12, c: C.text2))),
+      ]);
+
+  Widget _card(Color border, List<Widget> children) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: border), borderRadius: BorderRadius.circular(14)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (var i = 0; i < children.length; i++) ...[if (i > 0) const Gap(10), children[i]],
+        ]),
+      );
+
+  Widget _st(String v, String l) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: C.navy2, borderRadius: BorderRadius.circular(10)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(v, style: ts(18, w: FontWeight.w800, c: Colors.white, h: 22.5 / 18)),
+            SizedBox(height: 20, child: Padding(padding: const EdgeInsets.only(top: 4.8), child: Text(l, style: ts(11, c: C.pale)))),
+          ]),
         ),
-        const Gap(14),
-        Seg(tabs: const ['Jadwal', 'Saya', 'Selesai'], index: tab, onChange: (v) => setState(() => tab = v)),
-        const Gap(14),
-        if (tab == 0) for (final t in sched) _card(t),
-        if (tab == 1) ...[
-          if (mine.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Center(child: Text('Belum ada training yang Anda ikuti. Pilih dari tab Jadwal.', textAlign: TextAlign.center, style: ts(14, c: C.muted)))),
-          for (final t in mine) _card(t),
-        ],
-        if (tab == 2)
-          for (final p in past)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: AppCard(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [catPill(p.$1), const Spacer(), Pill(p.$6, tone: Tone.ok)]),
-                  const Gap(6),
-                  Text(p.$2, style: ts(14, w: FontWeight.w800)),
-                  Text('${p.$3} · ${p.$5}', style: ts(12, c: C.muted)),
-                  Text(p.$4, style: ts(12, c: C.muted)),
-                  const Gap(8),
-                  Row(children: [
-                    const Icon(Icons.workspace_premium_outlined, size: 18, color: C.purple),
-                    const Gap(0, w: 6),
-                    Expanded(child: Text('Sertifikat · ${p.$7}', style: ts(12, w: FontWeight.w600, c: C.purple))),
-                    TextButton(onPressed: () => toast(context, 'Mengunduh sertifikat (demo)'), child: const Text('Unduh')),
-                  ]),
-                ]),
-              ),
-            ),
-        const Gap(8),
-        Text('Jadwal training dan pemesanan ruangan dibuat penyelenggara di web AKPSatu. Ruangan dikonfirmasi oleh GA.', style: ts(12, c: C.muted, h: 1.4)),
+      );
+
+  Widget _train(_Tr x) {
+    final on = enr.contains(x.id);
+    return _card(on ? const Color(0xFFC9D8F5) : C.line, [
+      Wrap(spacing: 6, runSpacing: 6, children: [
+        _cat(x.cat),
+        if (x.mandatory) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: C.redBg, borderRadius: BorderRadius.circular(6)), child: Text('WAJIB · ditugaskan ${x.by}', style: ts(11, w: FontWeight.w800, c: C.red))),
       ]),
-    );
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(x.title, style: ts(15, w: FontWeight.w700, h: 1.35)), Text(x.trainer, style: ts(12, c: C.muted, h: 1.35))]),
+      Column(children: [
+        _mi('calendar', [TextSpan(text: x.when)]),
+        const Gap(5),
+        _mi('building', [
+          TextSpan(text: '${x.room} '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Container(margin: const EdgeInsets.only(left: 6), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2), decoration: BoxDecoration(color: x.roomOk ? C.greenBg : C.orangeBg, borderRadius: BorderRadius.circular(6)), child: Text(x.roomOk ? 'Dikonfirmasi GA' : 'Menunggu GA', style: ts(11, w: FontWeight.w700, c: x.roomOk ? C.greenFg : C.orangeFg))),
+          ),
+        ]),
+        const Gap(5),
+        _mi('people', [TextSpan(text: '${x.n + (on && !x.mandatory ? 1 : 0)} / ${x.max} peserta')]),
+      ]),
+      if (x.warn.isNotEmpty) Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(color: C.orangeBg, borderRadius: BorderRadius.circular(8)), child: Text(x.warn, style: ts(12, w: FontWeight.w600, c: C.orangeFg))),
+      Material(
+        color: x.mandatory ? const Color(0xFFEEF1F5) : on ? const Color(0xFFF3FBF6) : C.blue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: on && !x.mandatory ? const BorderSide(color: C.green, width: 1.5) : BorderSide.none),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: x.mandatory ? null : () => setState(() => on ? enr.remove(x.id) : enr.add(x.id)),
+          child: SizedBox(
+            height: 46,
+            width: double.infinity,
+            child: Center(child: Text(x.mandatory ? 'Terdaftar otomatis (wajib)' : on ? 'Terdaftar ✓ · Batalkan' : 'Daftar Training', style: ts(14, w: FontWeight.w700, c: x.mandatory ? const Color(0xFF3D4B5E) : on ? C.greenFg : Colors.white))),
+          ),
+        ),
+      ),
+    ]);
   }
 
-  Widget _card(_Tr t) {
-    final on = enr.contains(t.id);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [catPill(t.cat), const Gap(0, w: 8), if (t.mandatory) Text('WAJIB · ditugaskan ${t.by}', style: ts(11, w: FontWeight.w800, c: C.red))]),
-          const Gap(6),
-          Text(t.title, style: ts(15, w: FontWeight.w800)),
-          Text(t.trainer, style: ts(12, c: C.muted)),
-          const Gap(6),
-          Row(children: [const Icon(Icons.schedule, size: 16, color: C.muted), const Gap(0, w: 6), Expanded(child: Text(t.when, style: ts(13, w: FontWeight.w600)))]),
-          const Gap(4),
-          Row(children: [
-            const Icon(Icons.meeting_room_outlined, size: 16, color: C.muted),
-            const Gap(0, w: 6),
-            Flexible(child: Text(t.room, style: ts(13))),
-            const Gap(0, w: 6),
-            Pill(t.roomOk ? 'Ruang terkonfirmasi' : 'Menunggu GA', tone: t.roomOk ? Tone.ok : Tone.warn),
-          ]),
-          const Gap(4),
-          Text('${t.n + (on ? 1 : 0)} / ${t.max} peserta', style: ts(12, c: C.muted)),
-          if (t.warn.isNotEmpty) ...[const Gap(8), Notice(t.warn, tone: Tone.warn, icon: Icons.event_busy)],
-          const Gap(10),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: on
-                ? OutlinedButton(onPressed: t.mandatory ? null : () => setState(() => enr.remove(t.id)), child: Text(t.mandatory ? 'Terdaftar (wajib)' : 'Batalkan pendaftaran'))
-                : FilledButton(onPressed: () => setState(() => enr.add(t.id)), child: const Text('Daftar')),
+  Widget _pastCard(_Past p) => _card(C.line, [
+        Wrap(children: [_cat(p.cat)]),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(p.title, style: ts(15, w: FontWeight.w700, h: 1.35)), Text(p.trainer, style: ts(12, c: C.muted, h: 1.35))]),
+        Column(children: [
+          _mi('calendar', [TextSpan(text: p.when)]),
+          const Gap(5),
+          _mi('building', [TextSpan(text: '${p.room} ')]),
+        ]),
+        Row(children: [
+          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3), decoration: BoxDecoration(color: C.greenBg, borderRadius: BorderRadius.circular(99)), child: Text(p.result, style: ts(12, w: FontWeight.w700, c: C.greenFg))),
+          const Gap(0, w: 8),
+          Expanded(child: Text(p.cert, style: ts(12, c: C.muted))),
+          InkWell(onTap: () => toast(context, 'Mengunduh sertifikat (demo)'), child: Container(constraints: const BoxConstraints(minHeight: 40), alignment: Alignment.center, child: Text('Sertifikat', style: ts(13, w: FontWeight.w700, c: C.blue)))),
+        ]),
+      ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final mine = sched.where((x) => enr.contains(x.id)).toList();
+    final tabs = [('sched', 'Jadwal'), ('mine', 'Training Saya (${mine.length})'), ('hist', 'Riwayat')];
+    final children = <Widget>[];
+    if (tab == 'hist') {
+      children.add(Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: C.navy, borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [_st('5', 'Training 2026'), const Gap(0, w: 6), _st('32 j', 'Jam belajar'), const Gap(0, w: 6), _st('4', 'Sertifikat aktif')]),
+      ));
+      for (final p in past) {
+        children.add(_pastCard(p));
+      }
+    } else {
+      final src = tab == 'mine' ? mine : sched;
+      for (final x in src) {
+        children.add(_train(x));
+      }
+      if (src.isEmpty) children.add(Padding(padding: const EdgeInsets.only(top: 40), child: Center(child: Text('Belum ada training yang Anda ikuti. Pilih dari tab Jadwal.', textAlign: TextAlign.center, style: ts(14, c: C.muted)))));
+      if (tab == 'sched') children.add(Padding(padding: const EdgeInsets.fromLTRB(2, 4, 2, 0), child: Text('Jadwal training dan pemesanan ruangan dibuat penyelenggara di web AKPSatu. Ruangan dikonfirmasi oleh GA.', style: ts(12, c: C.muted, h: 1.5))));
+    }
+    return Scaffold(
+      backgroundColor: C.bg,
+      body: SafeArea(
+        child: Column(children: [
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
+            child: Row(children: [const BackBtn(label: 'Kembali ke beranda'), const Gap(0, w: 4), Expanded(child: Text('Learning Center', style: ts(18, w: FontWeight.w800)))]),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
+            child: Seg(tabs: [for (final t in tabs) t.$2], index: tabs.indexWhere((t) => t.$1 == tab), onChange: (i) => setState(() => tab = tabs[i].$1), gap: 4),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+              child: Column(children: [for (var i = 0; i < children.length; i++) ...[if (i > 0) const Gap(10), children[i]]]),
+            ),
           ),
         ]),
       ),

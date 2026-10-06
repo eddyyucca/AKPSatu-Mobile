@@ -4,45 +4,218 @@ import '../widgets.dart';
 
 const _mon = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 String fmtDate(DateTime d) => '${d.day} ${_mon[d.month - 1]} ${d.year}';
+String _p2(int n) => n < 10 ? '0$n' : '$n';
 
-class DateField extends StatelessWidget {
+BoxDecoration _inp({Color bg = Colors.white}) => BoxDecoration(color: bg, border: Border.all(color: C.input), borderRadius: BorderRadius.circular(10));
+
+/// Label + field (class `.fld`: gap 6).
+class Fld extends StatelessWidget {
   final String label;
+  final Widget child;
+  final String? hint;
+  const Fld(this.label, this.child, {super.key, this.hint});
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: ts(13, w: FontWeight.w600, c: C.text2)),
+        const Gap(6),
+        child,
+        if (hint != null) ...[const Gap(6), Text(hint!, style: ts(12, c: C.muted))],
+      ]);
+}
+
+/// `<input class="inp">` (tinggi 48, radius 10).
+class InpText extends StatelessWidget {
+  final String? initial, hint;
+  final bool readOnly;
+  final TextInputType? type;
+  final double fontSize;
+  final double height;
+  final bool small;
+  const InpText({super.key, this.initial, this.hint, this.readOnly = false, this.type, this.fontSize = 15, this.height = 48, this.small = false});
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: height,
+        child: TextFormField(
+          initialValue: initial,
+          readOnly: readOnly,
+          keyboardType: type,
+          style: ts(fontSize, c: readOnly ? const Color(0xFF3D4B5E) : C.text, w: FontWeight.w400),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: ts(fontSize, c: const Color(0xFF757575), w: FontWeight.w400),
+            filled: true,
+            fillColor: readOnly ? C.bg : Colors.white,
+            contentPadding: EdgeInsets.fromLTRB(small ? 7 : 9, 0, small ? 7 : 9, 0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.input)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.input)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.blue, width: 2)),
+          ),
+        ),
+      );
+}
+
+/// `<textarea class="ta">`.
+class TaField extends StatelessWidget {
+  final String initial;
+  final int rows;
+  const TaField(this.initial, {super.key, this.rows = 2});
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: rows == 2 ? 64 : 83,
+        child: TextFormField(
+          initialValue: initial,
+          maxLines: null,
+          expands: true,
+          textAlignVertical: TextAlignVertical.top,
+          style: ts(15, w: FontWeight.w400),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            isDense: true,
+            contentPadding: const EdgeInsets.fromLTRB(9, 11, 9, 11),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.input)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.input)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: C.blue, width: 2)),
+          ),
+        ),
+      );
+}
+
+/// `<select class="inp">`.
+class SelectInp<T> extends StatelessWidget {
+  final T value;
+  final List<T> items;
+  final ValueChanged<T> onChanged;
+  final String Function(T)? text;
+  final double height;
+  const SelectInp({super.key, required this.value, required this.items, required this.onChanged, this.text, this.height = 48});
+  @override
+  Widget build(BuildContext context) => Container(
+        height: height,
+        padding: const EdgeInsets.only(left: 16, right: 8),
+        decoration: _inp(),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<T>(
+            value: value,
+            isExpanded: true,
+            icon: const Ic.path('M6 9l6 6 6-6', size: 14, stroke: 2.4),
+            style: ts(15, w: FontWeight.w400),
+            dropdownColor: Colors.white,
+            items: [for (final i in items) DropdownMenuItem(value: i, child: Text(text?.call(i) ?? '$i', overflow: TextOverflow.ellipsis))],
+            onChanged: (v) => onChanged(v as T),
+          ),
+        ),
+      );
+}
+
+/// `<input type="date">` (dd/mm/yyyy + ikon kalender).
+class DateInp extends StatelessWidget {
   final DateTime value;
   final ValueChanged<DateTime> onChanged;
-  const DateField(this.label, this.value, this.onChanged, {super.key});
+  final double fontSize;
+  final double padX;
+  const DateInp(this.value, this.onChanged, {super.key, this.fontSize = 15, this.padX = 12});
   @override
-  Widget build(BuildContext context) => LabeledField(
-        label,
-        InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () async {
-            final d = await showDatePicker(context: context, initialDate: value, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-            if (d != null) onChanged(d);
-          },
-          child: Container(
-            height: 52,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.input)),
-            child: Row(children: [Expanded(child: Text(fmtDate(value), style: ts(15))), const Icon(Icons.calendar_today_outlined, size: 18, color: C.muted)]),
-          ),
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () async {
+          final d = await showDatePicker(context: context, initialDate: value, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+          if (d != null) onChanged(d);
+        },
+        child: Container(
+          height: 48,
+          padding: EdgeInsets.symmetric(horizontal: padX),
+          decoration: _inp(),
+          child: Row(children: [
+            Expanded(child: Text('${_p2(value.day)}/${_p2(value.month)}/${value.year}', style: ts(fontSize, w: FontWeight.w400))),
+            const Ic('leave', size: 16, color: C.text2),
+          ]),
         ),
       );
 }
 
 class SwitchRow extends StatelessWidget {
   final String title, sub;
-  final bool value;
+  final bool value, first;
   final ValueChanged<bool> onChanged;
-  const SwitchRow(this.title, this.sub, this.value, this.onChanged, {super.key});
+  const SwitchRow(this.title, this.sub, this.value, this.onChanged, {super.key, this.first = false});
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(minHeight: 52),
+        decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: Color(0xFFEEF1F5)))),
         child: Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: ts(14, w: FontWeight.w700)), Text(sub, style: ts(12, c: C.muted))])),
-          Toggle(value, onChanged),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: ts(14, w: FontWeight.w600, h: 1.4)), Text(sub, style: ts(12, c: C.muted, h: 1.4))])),
+          const Gap(0, w: 12),
+          Semantics(
+            toggled: value,
+            label: title,
+            child: GestureDetector(
+              onTap: () => onChanged(!value),
+              child: Container(
+                width: 52,
+                height: 32,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(color: value ? C.blue : const Color(0xFFC4CDD9), borderRadius: BorderRadius.circular(16)),
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(width: 26, height: 26, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+              ),
+            ),
+          ),
         ]),
       );
 }
+
+Widget _flowCard(List<(String, String, String)> steps) => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Alur persetujuan', style: ts(14, w: FontWeight.w800)),
+        for (final s in steps) ...[
+          const Gap(12),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(width: 26, height: 26, alignment: Alignment.center, decoration: const BoxDecoration(color: C.blueSoft, shape: BoxShape.circle), child: Text(s.$1, style: ts(12, w: FontWeight.w800, c: C.blueFg))),
+            const Gap(0, w: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(s.$2, style: ts(14, w: FontWeight.w700, h: 1.4)), Text(s.$3, style: ts(12, c: C.muted, h: 1.4))])),
+          ]),
+        ],
+      ]),
+    );
+
+Widget _dlCard(List<(String, String)> rows) => Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+      child: Column(children: [
+        for (var i = 0; i < rows.length; i++)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: Color(0xFFEEF1F5)))),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(rows[i].$1, style: ts(14, c: C.muted)),
+              const Gap(0, w: 16),
+              Flexible(child: Text(rows[i].$2, textAlign: TextAlign.right, style: ts(14, w: FontWeight.w600))),
+            ]),
+          ),
+      ]),
+    );
+
+Widget _sentView(BuildContext context, {required String title, required List<InlineSpan> body, required List<(String, String)> rows, required String cta, required VoidCallback onCta, required VoidCallback onReset}) => SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      child: Column(children: [
+        Container(width: 84, height: 84, decoration: const BoxDecoration(color: C.blueSoft, shape: BoxShape.circle), child: const Center(child: Ic('send', size: 40, stroke: 2, color: C.blue))),
+        const Gap(14),
+        Text(title, textAlign: TextAlign.center, style: ts(24, w: FontWeight.w800)),
+        const Gap(14),
+        Text.rich(TextSpan(children: body), textAlign: TextAlign.center, style: ts(15, c: C.text2, h: 1.5)),
+        const Gap(14),
+        _dlCard(rows),
+        const Gap(14),
+        PrimaryButton(cta, onTap: onCta),
+        const Gap(14),
+        InkWell(onTap: onReset, child: SizedBox(height: 44, child: Center(child: Text('Ajukan lagi (demo)', style: ts(14, w: FontWeight.w700, c: C.blue))))),
+      ]),
+    );
 
 class LeaveRequestScreen extends StatefulWidget {
   const LeaveRequestScreen({super.key});
@@ -61,83 +234,144 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
 
   int get days => end.difference(start).inDays + 1;
   bool get validRange => days >= 1;
-  bool get over => validRange && jenis == 'Cuti Tahunan' && days > 9;
+  bool get isTahunan => jenis == 'Cuti Tahunan';
+  bool get over => validRange && isTahunan && days > 9;
   bool get travel => tiket || jemput;
 
   @override
   Widget build(BuildContext context) {
-    if (sent) {
-      return SubPage(
-        title: 'Pengajuan Cuti',
-        body: ResultView(icon: Icons.check_circle, color: C.green, title: 'Pengajuan terkirim', text: 'Menunggu persetujuan Rudi Hartono (IT Manager). Anda akan menerima notifikasi setiap ada perubahan status.', children: [
-          SummaryBox([
-            ('No. pengajuan', 'CT-2026-11-0031'),
-            ('Jenis', jenis),
-            ('Periode', '${fmtDate(start)} – ${fmtDate(end)}'),
-            ('Durasi', '$days hari'),
-            ('Perjalanan', travel ? [if (tiket) 'Tiket', if (jemput) 'Jemputan'].join(' + ') : 'Tidak perlu'),
-          ]),
-          const Gap(16),
-          PrimaryButton('Lihat Cuti Tahunan', onTap: () => Navigator.pop(context)),
-          TextButton(onPressed: () => setState(() => sent = false), child: Text('Ajukan lagi (demo)', style: ts(13, c: C.muted))),
+    final canSend = validRange && !over;
+    final steps = <(String, String, String)>[
+      ('1', 'Rudi Hartono', 'IT Manager · atasan langsung'),
+      ('2', 'HR Department', 'Verifikasi saldo cuti & data'),
+      if (travel) ('3', 'GA / Travel', 'Pesan tiket, jadwalkan jemputan · lumpsum oleh HR'),
+      ('${(travel ? 3 : 2) + 1}', 'Itinerary terbit', 'Detail perjalanan muncul di aplikasi'),
+    ];
+    return Scaffold(
+      backgroundColor: C.bg,
+      body: SafeArea(
+        child: Column(children: [
+          PageHeader(sent ? 'Ajukan Cuti' : 'Ajukan Cuti'),
+          Expanded(
+            child: sent
+                ? _sentView(
+                    context,
+                    title: 'Pengajuan terkirim',
+                    body: [const TextSpan(text: 'Menunggu persetujuan '), TextSpan(text: 'Rudi Hartono', style: ts(15, w: FontWeight.w700, c: C.text2, h: 1.5)), const TextSpan(text: ' (IT Manager). Anda akan menerima notifikasi setiap ada perubahan status.')],
+                    rows: [
+                      ('No. pengajuan', 'CT-2026-11-0031'),
+                      ('Jenis', jenis),
+                      ('Periode', '${fmtDate(start)} – ${fmtDate(end)}'),
+                      ('Durasi', '$days hari'),
+                      ('Perjalanan', tiket && jemput ? 'Tiket + jemputan' : tiket ? 'Tiket pesawat' : jemput ? 'Jemputan' : 'Tidak ada'),
+                    ],
+                    cta: 'Lihat Cuti Tahunan',
+                    onCta: () => Navigator.pop(context),
+                    onReset: () => setState(() => sent = false),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(12)),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                          Text('Sisa cuti tahunan', style: ts(14, w: FontWeight.w600, c: C.blueFg)),
+                          Text('9 hari', style: ts(18, w: FontWeight.w800, c: C.blueFg)),
+                        ]),
+                      ),
+                      const Gap(16),
+                      Fld(
+                        'Jenis cuti',
+                        SelectInp<String>(
+                          value: jenis,
+                          items: jenisList,
+                          onChanged: (v) => setState(() {
+                            jenis = v;
+                            if (v == 'Cuti Roster') {
+                              tiket = true;
+                              jemput = true;
+                            }
+                            if (v == 'Cuti Sakit') {
+                              tiket = false;
+                              jemput = false;
+                            }
+                          }),
+                        ),
+                        hint: 'Daftar jenis cuti diatur HR dari web AKPSatu',
+                      ),
+                      const Gap(16),
+                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Expanded(child: Fld('Tanggal mulai', DateInp(start, (d) => setState(() => start = d), fontSize: 14, padX: 10))),
+                        const Gap(0, w: 12),
+                        Expanded(child: Fld('Tanggal selesai', DateInp(end, (d) => setState(() => end = d), fontSize: 14, padX: 10))),
+                      ]),
+                      if (validRange) ...[
+                        const Gap(16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(12)),
+                          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                            Flexible(child: Text.rich(TextSpan(children: [TextSpan(text: 'Total ', style: ts(14, c: C.text2)), TextSpan(text: '$days hari', style: ts(18, w: FontWeight.w700))]))),
+                            if (isTahunan) Text.rich(TextSpan(children: [TextSpan(text: 'Sisa setelah cuti: ', style: ts(13, c: C.muted)), TextSpan(text: '${9 - days} hari', style: ts(13, w: FontWeight.w700))])),
+                          ]),
+                        ),
+                      ],
+                      if (!validRange) ...[const Gap(16), Text('Tanggal selesai harus sama atau setelah tanggal mulai.', style: ts(13, w: FontWeight.w600, c: C.red))],
+                      if (over) ...[const Gap(16), Text('Durasi melebihi sisa cuti tahunan (9 hari).', style: ts(13, w: FontWeight.w600, c: C.red))],
+                      const Gap(16),
+                      const Fld('Alasan', TaField('Acara keluarga di Makassar.')),
+                      const Gap(16),
+                      Fld('Pengganti tugas', SelectInp<String>(value: pengganti, items: const ['Fajar Nugroho · Network Engineer', 'Agus Salim · IT Support', 'Rina Kartika · IT Support'], onChanged: (v) => setState(() => pengganti = v))),
+                      const Gap(16),
+                      const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Expanded(child: Fld('Alamat selama cuti', InpText(initial: 'Makassar'))),
+                        Gap(0, w: 12),
+                        Expanded(child: Fld('No. darurat', InpText(hint: '08xx', type: TextInputType.phone))),
+                      ]),
+                      if (jenis == 'Cuti Sakit') ...[
+                        const Gap(16),
+                        Fld(
+                          'Surat dokter',
+                          InkWell(
+                            onTap: () => toast(context, 'Pilih berkas (demo)'),
+                            child: Container(
+                              height: 48,
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              alignment: Alignment.centerLeft,
+                              decoration: _inp(),
+                              child: Text('Pilih File  Tidak ada file yang dipilih', style: ts(14, w: FontWeight.w400)),
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (jenis != 'Cuti Sakit') ...[
+                        const Gap(16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text('Kebutuhan perjalanan', style: ts(14, w: FontWeight.w800))),
+                            SwitchRow('Tiket pesawat', 'Dipesankan oleh GA / Travel', tiket, (v) => setState(() => tiket = v), first: true),
+                            SwitchRow('Jemputan bandara', 'Mess ↔ bandara, berangkat & kembali', jemput, (v) => setState(() => jemput = v)),
+                            if (tiket)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4, bottom: 14),
+                                child: Fld('Kota tujuan', SelectInp<String>(value: kota, items: const ['Makassar (UPG)', 'Jakarta (CGK)', 'Surabaya (SUB)', 'Kota lain'], onChanged: (v) => setState(() => kota = v))),
+                              ),
+                          ]),
+                        ),
+                      ],
+                      const Gap(16),
+                      _flowCard(steps),
+                      const Gap(16),
+                      PrimaryButton(canSend ? 'Kirim Pengajuan' : 'Periksa tanggal cuti', height: 54, onTap: canSend ? () => setState(() => sent = true) : null),
+                    ]),
+                  ),
+          ),
         ]),
-      );
-    }
-    final ok = validRange && !over;
-    return SubPage(
-      title: 'Pengajuan Cuti',
-      bottom: PrimaryButton(ok ? 'Kirim Pengajuan' : 'Periksa tanggal cuti', onTap: ok ? () => setState(() => sent = true) : null),
-      body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Ajukan Cuti', style: ts(22, w: FontWeight.w800)),
-        const Gap(10),
-        AppCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(children: [Expanded(child: Text('Sisa cuti tahunan', style: ts(14, c: C.muted))), Text('9 hari', style: ts(20, w: FontWeight.w800))]),
-        ),
-        const Gap(14),
-        DropField<String>('Jenis cuti', value: jenis, items: jenisList, onChanged: (v) => setState(() {
-              jenis = v!;
-              if (v == 'Cuti Roster') { tiket = true; jemput = true; }
-              if (v == 'Cuti Sakit') { tiket = false; jemput = false; }
-            })),
-        Text('Daftar jenis cuti diatur HR dari web AKPSatu', style: ts(11, c: C.muted)),
-        const Gap(14),
-        Row(children: [
-          Expanded(child: DateField('Tanggal mulai', start, (d) => setState(() => start = d))),
-          const Gap(0, w: 10),
-          Expanded(child: DateField('Tanggal selesai', end, (d) => setState(() => end = d))),
-        ]),
-        if (!validRange) const Notice('Tanggal selesai harus sama atau setelah tanggal mulai.', tone: Tone.bad, icon: Icons.error_outline)
-        else if (over) const Notice('Durasi melebihi sisa cuti tahunan (9 hari).', tone: Tone.bad, icon: Icons.error_outline)
-        else Row(children: [Text('Total $days hari', style: ts(14, w: FontWeight.w800)), const Spacer(), if (jenis == 'Cuti Tahunan') Text('Sisa setelah cuti: ${9 - days} hari', style: ts(13, c: C.muted))]),
-        const Gap(14),
-        const TextBox('Alasan', initial: 'Acara keluarga di Makassar.', lines: 3),
-        DropField<String>('Pengganti tugas', value: pengganti, items: const ['Fajar Nugroho · Network Engineer', 'Agus Salim · IT Support', 'Rina Kartika · IT Support'], onChanged: (v) => setState(() => pengganti = v!)),
-        const TextBox('Alamat selama cuti', hint: 'Alamat lengkap'),
-        const TextBox('No. darurat', hint: '08xx xxxx xxxx', type: TextInputType.phone),
-        if (jenis == 'Cuti Sakit')
-          LabeledField('Surat dokter', OutlineButton('Unggah foto surat dokter', onTap: () => toast(context, 'Pilih foto (demo)'))),
-        const SectionLabel('KEBUTUHAN PERJALANAN'),
-        AppCard(
-          child: Column(children: [
-            SwitchRow('Tiket pesawat', 'Dipesankan oleh GA / Travel', tiket, (v) => setState(() => tiket = v)),
-            const Divider(color: C.line),
-            SwitchRow('Jemputan bandara', 'Mess ↔ bandara, berangkat & kembali', jemput, (v) => setState(() => jemput = v)),
-          ]),
-        ),
-        if (travel) ...[
-          const Gap(14),
-          DropField<String>('Kota tujuan', value: kota, items: const ['Makassar (UPG)', 'Jakarta (CGK)', 'Surabaya (SUB)', 'Kota lain'], onChanged: (v) => setState(() => kota = v!)),
-        ],
-        const SectionLabel('ALUR PERSETUJUAN'),
-        AppCard(
-          child: FlowSteps([
-            const StepItem(FlowState.now, 'Rudi Hartono', 'IT Manager · atasan langsung'),
-            const StepItem(FlowState.wait, 'HR Department', 'Verifikasi saldo cuti & data'),
-            if (travel) const StepItem(FlowState.wait, 'GA / Travel', 'Pesan tiket & jadwalkan jemputan'),
-          ]),
-        ),
-      ]),
+      ),
     );
   }
 }
@@ -153,91 +387,143 @@ class _OvertimeScreenState extends State<OvertimeScreen> {
   DateTime tgl = DateTime(2026, 10, 4);
   bool sent = false;
   static const starts = ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
-  static const ends = ['17:00', '18:00', '19:00', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '24:00', '01:00 (+1)', '02:00 (+1)'];
+  static const ends = ['17:00', '18:00', '19:00', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '24:00', '01:00', '02:00'];
 
   int toMin(String t) {
-    final p = t.split(' ')[0].split(':');
+    final p = t.split(':');
     return int.parse(p[0]) * 60 + int.parse(p[1]);
   }
 
-  double get dur {
+  int get mins {
     final a = toMin(start);
     var b = toMin(end);
     if (b <= a) b += 1440;
-    return (b - a) / 60;
+    return b - a;
   }
 
-  String get durLabel {
-    final m = (dur * 60).round();
-    return '${m ~/ 60} jam${m % 60 > 0 ? ' ${m % 60} mnt' : ''}';
-  }
-
+  double get dur => mins / 60;
+  String get durLabel => '${mins ~/ 60} jam${mins % 60 > 0 ? ' ${mins % 60} mnt' : ''}';
   static const used = 5.0;
   bool get warnDay => hari == 'Hari kerja' && dur > 4;
   bool get warnWeek => used + dur > 18;
 
-  @override
-  Widget build(BuildContext context) {
-    if (sent) {
-      return SubPage(
-        title: 'Pengajuan Lembur',
-        body: ResultView(icon: Icons.check_circle, color: C.green, title: 'Pengajuan lembur terkirim', text: 'Menunggu persetujuan Rudi Hartono. Setelah disetujui, jam lembur masuk ke perhitungan payroll oleh HR.', children: [
-          SummaryBox([('No. pengajuan', 'LB-2026-10-0118'), ('Tanggal', '${fmtDate(tgl)} · $hari'), ('Jam', '$start – $end'), ('Durasi', durLabel)]),
-          const Gap(16),
-          PrimaryButton('Kembali ke Beranda', onTap: () => Navigator.pop(context)),
-          TextButton(onPressed: () => setState(() => sent = false), child: Text('Ajukan lagi (demo)', style: ts(13, c: C.muted))),
+  Widget _hist(String t, String s, String p, Tone tone, {bool first = false}) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: Color(0xFFEEF1F5)))),
+        child: Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(t, style: ts(14, w: FontWeight.w700, h: 1.4)), Text(s, style: ts(12, c: C.muted, h: 1.4))])),
+          Pill(p, tone: tone),
         ]),
       );
-    }
-    final ok = !warnDay && !warnWeek;
-    final total = (used + dur).clamp(0, 99).toDouble();
-    Widget hist(String t, String s, String p, Tone tone) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: AppCard(child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(t, style: ts(14, w: FontWeight.w800)), Text(s, style: ts(13, c: C.muted))])), Pill(p, tone: tone)])),
-        );
-    return SubPage(
-      title: 'Pengajuan Lembur',
-      bottom: PrimaryButton(ok ? 'Kirim Pengajuan Lembur' : 'Sesuaikan jam lembur', onTap: ok ? () => setState(() => sent = true) : null),
-      body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Ajukan Lembur', style: ts(22, w: FontWeight.w800)),
-        const Gap(10),
-        AppCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [Expanded(child: Text('Lembur minggu ini (28 Sep – 4 Okt)', style: ts(13, c: C.muted))), Text('${(total * 10).round() / 10} / 18 jam', style: ts(13, w: FontWeight.w800, c: warnWeek ? C.red : C.text))]),
-            const Gap(8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Stack(children: [
-                Container(height: 10, color: C.chip),
-                FractionallySizedBox(widthFactor: (total / 18).clamp(0, 1), child: Container(height: 10, color: warnWeek ? C.red : C.blue)),
-                FractionallySizedBox(widthFactor: used / 18, child: Container(height: 10, color: C.navy)),
-              ]),
-            ),
-            const Gap(6),
-            Text('Sudah: 5 jam · Pengajuan ini: $durLabel', style: ts(12, c: C.muted)),
-          ]),
-        ),
-        const Gap(14),
-        DateField('Tanggal lembur', tgl, (d) => setState(() => tgl = d)),
-        LabeledField('Jenis hari', ChoiceRow(options: const ['Hari kerja', 'Hari off / libur'], selected: hari, onSelect: (v) => setState(() => hari = v))),
-        Row(children: [
-          Expanded(child: DropField<String>('Jam mulai', value: start, items: starts, onChanged: (v) => setState(() => start = v!))),
-          const Gap(0, w: 10),
-          Expanded(child: DropField<String>('Jam selesai', value: end, items: ends, onChanged: (v) => setState(() => end = v!))),
+
+  @override
+  Widget build(BuildContext context) {
+    final canSend = !warnDay && !warnWeek;
+    final weekAfter = (((used + dur) * 10).round() / 10).toString().replaceAll(RegExp(r'\.0$'), '');
+    final usedPct = (used / 18 * 100).clamp(0, 100).toDouble();
+    final newPct = (dur / 18 * 100).clamp(0, 100 - usedPct).toDouble();
+    return Scaffold(
+      backgroundColor: C.bg,
+      body: SafeArea(
+        child: Column(children: [
+          const PageHeader('Ajukan Lembur'),
+          Expanded(
+            child: sent
+                ? _sentView(
+                    context,
+                    title: 'Pengajuan lembur terkirim',
+                    body: [const TextSpan(text: 'Menunggu persetujuan '), TextSpan(text: 'Rudi Hartono', style: ts(15, w: FontWeight.w700, c: C.text2, h: 1.5)), const TextSpan(text: '. Setelah disetujui, jam lembur masuk ke perhitungan payroll oleh HR.')],
+                    rows: [('No. pengajuan', 'LB-2026-10-0118'), ('Tanggal', '4 Okt 2026 · $hari'), ('Jam', '$start – $end'), ('Durasi', durLabel)],
+                    cta: 'Kembali ke Beranda',
+                    onCta: () => Navigator.pop(context),
+                    onReset: () => setState(() => sent = false),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                            Flexible(child: Text('Lembur minggu ini (28 Sep – 4 Okt)', style: ts(13, c: C.muted))),
+                            Text('$weekAfter / 18 jam', style: ts(15, w: FontWeight.w800)),
+                          ]),
+                          const Gap(10),
+                          Semantics(
+                            label: 'Pemakaian jam lembur minggu ini',
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: Container(
+                                height: 8,
+                                color: const Color(0xFFEEF1F5),
+                                child: LayoutBuilder(
+                                  builder: (_, b) => Row(children: [
+                                    Container(width: b.maxWidth * usedPct / 100, color: C.blue),
+                                    Container(width: b.maxWidth * newPct / 100, color: const Color(0xFF8FB0EE)),
+                                  ]),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Gap(10),
+                          Wrap(crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 6,children: [
+                            Container(width: 10, height: 10, decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(2))),
+                            const Gap(0, w: 6),
+                            Text('Sudah: 5 jam', style: ts(12, c: C.text2)),
+                            const Gap(0, w: 14),
+                            Container(width: 10, height: 10, decoration: BoxDecoration(color: const Color(0xFF8FB0EE), borderRadius: BorderRadius.circular(2))),
+                            const Gap(0, w: 6),
+                            Text('Pengajuan ini: $durLabel', style: ts(12, c: C.text2)),
+                          ]),
+                        ]),
+                      ),
+                      const Gap(16),
+                      Fld('Tanggal lembur', DateInp(tgl, (d) => setState(() => tgl = d))),
+                      const Gap(16),
+                      Text('Jenis hari', style: ts(13, w: FontWeight.w600, c: C.text2)),
+                      const Gap(8),
+                      ChoiceRow(options: const ['Hari kerja', 'Hari off / libur'], selected: hari, onSelect: (v) => setState(() => hari = v)),
+                      const Gap(16),
+                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Expanded(child: Fld('Jam mulai', SelectInp<String>(value: start, items: starts, onChanged: (v) => setState(() => start = v)))),
+                        const Gap(0, w: 12),
+                        Expanded(child: Fld('Jam selesai', SelectInp<String>(value: end, items: ends, text: (v) => v == '01:00' ? '01:00 (+1)' : v == '02:00' ? '02:00 (+1)' : v, onChanged: (v) => setState(() => end = v)))),
+                      ]),
+                      const Gap(16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(12)),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Durasi', style: ts(14, c: C.text2)), Text(durLabel, style: ts(18, w: FontWeight.w800))]),
+                      ),
+                      if (warnDay) ...[const Gap(16), Text('Melebihi batas lembur hari kerja (4 jam per hari).', style: ts(13, w: FontWeight.w600, c: C.red, h: 1.5))],
+                      if (warnWeek) ...[const Gap(16), Text('Total minggu ini melebihi batas 18 jam.', style: ts(13, w: FontWeight.w600, c: C.red, h: 1.5))],
+                      const Gap(16),
+                      const Fld('Uraian pekerjaan', TaField('Migrasi file server ke NAS baru dan pengecekan backup.', rows: 3)),
+                      const Gap(16),
+                      const Fld('Lokasi', InpText(initial: 'Ruang Server · Kantor Site')),
+                      const Gap(16),
+                      const Fld('Diperintahkan oleh', InpText(initial: 'Rudi Hartono · IT Manager', readOnly: true)),
+                      const Gap(16),
+                      PrimaryButton(canSend ? 'Kirim Pengajuan Lembur' : 'Sesuaikan jam lembur', height: 54, onTap: canSend ? () => setState(() => sent = true) : null),
+                      const Gap(16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text('Riwayat lembur', style: ts(14, w: FontWeight.w800))),
+                          _hist('3 Okt · 19:00 – 22:00', '3 jam · Update firewall', 'Disetujui', Tone.ok, first: true),
+                          _hist('29 Sep · 19:00 – 21:00', '2 jam · Instalasi CCTV pos', 'Disetujui', Tone.ok),
+                          _hist('22 Sep · 18:00 – 23:00', '5 jam · Melebihi batas harian', 'Ditolak', Tone.bad),
+                        ]),
+                      ),
+                    ]),
+                  ),
+          ),
         ]),
-        Row(children: [Text('Durasi ', style: ts(13, c: C.muted)), Text(durLabel, style: ts(14, w: FontWeight.w800))]),
-        const Gap(8),
-        if (warnDay) const Notice('Melebihi batas lembur hari kerja (4 jam per hari).', tone: Tone.bad, icon: Icons.error_outline),
-        if (warnWeek) const Padding(padding: EdgeInsets.only(top: 6), child: Notice('Total minggu ini melebihi batas 18 jam.', tone: Tone.bad, icon: Icons.error_outline)),
-        const Gap(14),
-        const TextBox('Uraian pekerjaan', initial: 'Migrasi file server ke NAS baru dan pengecekan backup.', lines: 3),
-        const TextBox('Lokasi', initial: 'Ruang Server, Kantor Site'),
-        const TextBox('Diperintahkan oleh', initial: 'Rudi Hartono'),
-        const SectionLabel('RIWAYAT LEMBUR'),
-        hist('3 Okt · 19:00 – 22:00', '3 jam · Update firewall', 'Disetujui', Tone.ok),
-        hist('29 Sep · 19:00 – 21:00', '2 jam · Instalasi CCTV pos', 'Disetujui', Tone.ok),
-        hist('22 Sep · 18:00 – 23:00', '5 jam · Melebihi batas harian', 'Ditolak', Tone.bad),
-      ]),
+      ),
     );
   }
 }
