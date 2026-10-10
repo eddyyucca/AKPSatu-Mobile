@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../l10n/lang.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-const _mon = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-String fmtDate(DateTime d) => '${d.day} ${_mon[d.month - 1]} ${d.year}';
+String fmtDate(DateTime d) => L.instance.shortDate(d);
 String _p2(int n) => n < 10 ? '0$n' : '$n';
 
 BoxDecoration _inp({Color bg = Colors.white}) => BoxDecoration(color: bg, border: Border.all(color: C.input), borderRadius: BorderRadius.circular(10));
@@ -41,7 +41,7 @@ class InpText extends StatelessWidget {
           keyboardType: type,
           style: ts(fontSize, c: readOnly ? const Color(0xFF3D4B5E) : C.text, w: FontWeight.w400),
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: hint == null ? null : tr(hint!),
             hintStyle: ts(fontSize, c: const Color(0xFF757575), w: FontWeight.w400),
             filled: true,
             fillColor: readOnly ? C.bg : Colors.white,
@@ -114,12 +114,13 @@ class DateInp extends StatelessWidget {
   final ValueChanged<DateTime> onChanged;
   final double fontSize;
   final double padX;
-  const DateInp(this.value, this.onChanged, {super.key, this.fontSize = 15, this.padX = 12});
+  final DateTime? first, last; // batas tanggal yang bisa dipilih (bawaan 2026–2027)
+  const DateInp(this.value, this.onChanged, {super.key, this.fontSize = 15, this.padX = 12, this.first, this.last});
   @override
   Widget build(BuildContext context) => InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: () async {
-          final d = await showDatePicker(context: context, initialDate: value, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+          final d = await showDatePicker(context: context, initialDate: value, firstDate: first ?? DateTime(2026, 1, 1), lastDate: last ?? DateTime(2027, 12, 31));
           if (d != null) onChanged(d);
         },
         child: Container(
@@ -367,158 +368,6 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
                       _flowCard(steps),
                       const Gap(16),
                       PrimaryButton(canSend ? 'Kirim Pengajuan' : 'Periksa tanggal cuti', height: 54, onTap: canSend ? () => setState(() => sent = true) : null),
-                    ]),
-                  ),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-class OvertimeScreen extends StatefulWidget {
-  const OvertimeScreen({super.key});
-  @override
-  State<OvertimeScreen> createState() => _OvertimeScreenState();
-}
-
-class _OvertimeScreenState extends State<OvertimeScreen> {
-  String start = '19:00', end = '22:00', hari = 'Hari kerja';
-  DateTime tgl = DateTime(2026, 10, 4);
-  bool sent = false;
-  static const starts = ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
-  static const ends = ['17:00', '18:00', '19:00', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30', '24:00', '01:00', '02:00'];
-
-  int toMin(String t) {
-    final p = t.split(':');
-    return int.parse(p[0]) * 60 + int.parse(p[1]);
-  }
-
-  int get mins {
-    final a = toMin(start);
-    var b = toMin(end);
-    if (b <= a) b += 1440;
-    return b - a;
-  }
-
-  double get dur => mins / 60;
-  String get durLabel => '${mins ~/ 60} jam${mins % 60 > 0 ? ' ${mins % 60} mnt' : ''}';
-  static const used = 5.0;
-  bool get warnDay => hari == 'Hari kerja' && dur > 4;
-  bool get warnWeek => used + dur > 18;
-
-  Widget _hist(String t, String s, String p, Tone tone, {bool first = false}) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: Color(0xFFEEF1F5)))),
-        child: Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(t, style: ts(14, w: FontWeight.w700, h: 1.4)), Text(s, style: ts(12, c: C.muted, h: 1.4))])),
-          Pill(p, tone: tone),
-        ]),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final canSend = !warnDay && !warnWeek;
-    final weekAfter = (((used + dur) * 10).round() / 10).toString().replaceAll(RegExp(r'\.0$'), '');
-    final usedPct = (used / 18 * 100).clamp(0, 100).toDouble();
-    final newPct = (dur / 18 * 100).clamp(0, 100 - usedPct).toDouble();
-    return Scaffold(
-      backgroundColor: C.bg,
-      body: SafeArea(
-        child: Column(children: [
-          const PageHeader('Ajukan Lembur'),
-          Expanded(
-            child: sent
-                ? _sentView(
-                    context,
-                    title: 'Pengajuan lembur terkirim',
-                    body: [const TextSpan(text: 'Menunggu persetujuan '), TextSpan(text: 'Rudi Hartono', style: ts(15, w: FontWeight.w700, c: C.text2, h: 1.5)), const TextSpan(text: '. Setelah disetujui, jam lembur masuk ke perhitungan payroll oleh HR.')],
-                    rows: [('No. pengajuan', 'LB-2026-10-0118'), ('Tanggal', '4 Okt 2026 · $hari'), ('Jam', '$start – $end'), ('Durasi', durLabel)],
-                    cta: 'Kembali ke Beranda',
-                    onCta: () => Navigator.pop(context),
-                    onReset: () => setState(() => sent = false),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Flexible(child: Text('Lembur minggu ini (28 Sep – 4 Okt)', style: ts(13, c: C.muted))),
-                            Text('$weekAfter / 18 jam', style: ts(15, w: FontWeight.w800)),
-                          ]),
-                          const Gap(10),
-                          Semantics(
-                            label: 'Pemakaian jam lembur minggu ini',
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: Container(
-                                height: 8,
-                                color: const Color(0xFFEEF1F5),
-                                child: LayoutBuilder(
-                                  builder: (_, b) => Row(children: [
-                                    Container(width: b.maxWidth * usedPct / 100, color: C.blue),
-                                    Container(width: b.maxWidth * newPct / 100, color: const Color(0xFF8FB0EE)),
-                                  ]),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Gap(10),
-                          Wrap(crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 6,children: [
-                            Container(width: 10, height: 10, decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(2))),
-                            const Gap(0, w: 6),
-                            Text('Sudah: 5 jam', style: ts(12, c: C.text2)),
-                            const Gap(0, w: 14),
-                            Container(width: 10, height: 10, decoration: BoxDecoration(color: const Color(0xFF8FB0EE), borderRadius: BorderRadius.circular(2))),
-                            const Gap(0, w: 6),
-                            Text('Pengajuan ini: $durLabel', style: ts(12, c: C.text2)),
-                          ]),
-                        ]),
-                      ),
-                      const Gap(16),
-                      Fld('Tanggal lembur', DateInp(tgl, (d) => setState(() => tgl = d))),
-                      const Gap(16),
-                      Text('Jenis hari', style: ts(13, w: FontWeight.w600, c: C.text2)),
-                      const Gap(8),
-                      ChoiceRow(options: const ['Hari kerja', 'Hari off / libur'], selected: hari, onSelect: (v) => setState(() => hari = v)),
-                      const Gap(16),
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(child: Fld('Jam mulai', SelectInp<String>(value: start, items: starts, onChanged: (v) => setState(() => start = v)))),
-                        const Gap(0, w: 12),
-                        Expanded(child: Fld('Jam selesai', SelectInp<String>(value: end, items: ends, text: (v) => v == '01:00' ? '01:00 (+1)' : v == '02:00' ? '02:00 (+1)' : v, onChanged: (v) => setState(() => end = v)))),
-                      ]),
-                      const Gap(16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(12)),
-                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Durasi', style: ts(14, c: C.text2)), Text(durLabel, style: ts(18, w: FontWeight.w800))]),
-                      ),
-                      if (warnDay) ...[const Gap(16), Text('Melebihi batas lembur hari kerja (4 jam per hari).', style: ts(13, w: FontWeight.w600, c: C.red, h: 1.5))],
-                      if (warnWeek) ...[const Gap(16), Text('Total minggu ini melebihi batas 18 jam.', style: ts(13, w: FontWeight.w600, c: C.red, h: 1.5))],
-                      const Gap(16),
-                      const Fld('Uraian pekerjaan', TaField('Migrasi file server ke NAS baru dan pengecekan backup.', rows: 3)),
-                      const Gap(16),
-                      const Fld('Lokasi', InpText(initial: 'Ruang Server · Kantor Site')),
-                      const Gap(16),
-                      const Fld('Diperintahkan oleh', InpText(initial: 'Rudi Hartono · IT Manager', readOnly: true)),
-                      const Gap(16),
-                      PrimaryButton(canSend ? 'Kirim Pengajuan Lembur' : 'Sesuaikan jam lembur', height: 54, onTap: canSend ? () => setState(() => sent = true) : null),
-                      const Gap(16),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text('Riwayat lembur', style: ts(14, w: FontWeight.w800))),
-                          _hist('3 Okt · 19:00 – 22:00', '3 jam · Update firewall', 'Disetujui', Tone.ok, first: true),
-                          _hist('29 Sep · 19:00 – 21:00', '2 jam · Instalasi CCTV pos', 'Disetujui', Tone.ok),
-                          _hist('22 Sep · 18:00 – 23:00', '5 jam · Melebihi batas harian', 'Ditolak', Tone.bad),
-                        ]),
-                      ),
                     ]),
                   ),
           ),

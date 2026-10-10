@@ -1,5 +1,6 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../api/api.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -12,7 +13,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  late final AnimationController intro = AnimationController(vsync: this, duration: const Duration(milliseconds: 3200));
+  late final AnimationController intro = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
   late final AnimationController loop = AnimationController(vsync: this, duration: const Duration(seconds: 6))..repeat();
   bool left = false;
 
@@ -20,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
     intro.forward().whenComplete(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 350));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
       _go();
     });
   }
@@ -28,10 +29,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void _go() {
     if (left || !mounted) return;
     left = true;
+    final signedIn = Session.instance.active && !Session.instance.mustChangePassword;
+    final target = signedIn ? R.home : R.login;
     Navigator.of(context).pushReplacement(PageRouteBuilder(
-      settings: const RouteSettings(name: R.login),
+      settings: RouteSettings(name: target),
       transitionDuration: const Duration(milliseconds: 500),
-      pageBuilder: (c, _, _) => routes[R.login]!(c),
+      pageBuilder: (c, _, _) => routes[target]!(c),
       transitionsBuilder: (_, a, _, child) => FadeTransition(opacity: a, child: child),
     ));
   }
@@ -60,9 +63,11 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         onTap: _go,
         child: Stack(children: [
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: Listenable.merge([intro, loop]),
-              builder: (_, _) => CustomPaint(painter: _SplashBgPainter(loop.value, Curves.easeOutCubic.transform(math.min(1, intro.value * 1.6)))),
+            child: RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: Listenable.merge([intro, loop]),
+                builder: (_, _) => CustomPaint(painter: _SplashBgPainter(loop.value, Curves.easeOutCubic.transform(math.min(1, intro.value * 1.6)))),
+              ),
             ),
           ),
           Center(

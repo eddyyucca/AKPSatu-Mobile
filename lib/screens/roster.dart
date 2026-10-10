@@ -1,6 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../l10n/lang.dart';
+import '../api/api.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'roster_live.dart';
 
 class RosterScreen extends StatefulWidget {
   const RosterScreen({super.key});
@@ -142,6 +145,9 @@ class _RosterScreenState extends State<RosterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    L.watch(context);
+    // Sudah login: tampilkan roster sungguhan dari HRIS (sama dengan web). Tanpa sesi: tampilan contoh.
+    if (Session.instance.active) return const LiveRosterScreen();
     final (y, mo, notes, change) = defs[idx];
     final cnt = counts(y, mo);
     return Scaffold(
@@ -198,7 +204,7 @@ class _RosterScreenState extends State<RosterScreen> {
                       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                         _navBtn('Bulan sebelumnya', 'back', () => go(idx - 1)),
                         Column(children: [
-                          Text('${names[mo]} $y', style: ts(17, w: FontWeight.w800, h: 1.3)),
+                          Text(L.instance.monthYear(DateTime(y, mo + 1)), style: ts(17, w: FontWeight.w800, h: 1.3)),
                           Text('Day ${cnt['D']} · Night ${cnt['N']} · Off ${cnt['O']}', style: ts(12, c: C.muted, h: 1.3)),
                         ]),
                         _navBtn('Bulan berikutnya', 'chevron', () => go(idx + 1)),
@@ -231,7 +237,7 @@ class _RosterScreenState extends State<RosterScreen> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Agenda ${names[mo]} $y', style: ts(14, w: FontWeight.w800)),
+                    Text('${tr('Agenda')} ${L.instance.monthYear(DateTime(y, mo + 1))}', style: ts(14, w: FontWeight.w800)),
                     for (final n in notes) ...[
                       const Gap(8),
                       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

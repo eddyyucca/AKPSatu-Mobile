@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../api/notifications.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'attendance.dart';
@@ -15,6 +16,18 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late int i = widget.initialIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationCenter.instance.attach(); // pemeriksaan notifikasi berjalan selama layar utama tampil
+  }
+
+  @override
+  void dispose() {
+    NotificationCenter.instance.detach();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(

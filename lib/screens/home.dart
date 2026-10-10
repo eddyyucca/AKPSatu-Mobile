@@ -1,6 +1,18 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart' hide Text;
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import '../api/api.dart';
+import '../l10n/lang.dart';
+import '../api/banners.dart';
+import '../api/notifications.dart';
 import '../pattern.dart';
+import '../refresh.dart';
 import '../routes.dart';
 import 'menu_section.dart';
 import '../theme.dart';
@@ -45,10 +57,21 @@ class HomePage extends StatelessWidget {
         ]),
       );
 
+  /// Tarik ke bawah: perbarui jabatan di sesi, banner, dan absensi hari ini.
+  Future<void> _refresh() async {
+    if (Session.instance.active) await Api.instance.loadSummary();
+    await Refresh.run();
+  }
+
   @override
   Widget build(BuildContext context) {
     void go(String r) => Navigator.pushNamed(context, r);
-    return SingleChildScrollView(
+    return ValueListenableBuilder<int>(
+      valueListenable: Refresh.rev,
+      builder: (context, _, _) => PullToRefresh(
+        onRefresh: _refresh,
+        child: SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(children: [
         BrandHeader(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 76),
@@ -57,36 +80,43 @@ class HomePage extends StatelessWidget {
               const Logo(size: 34),
               const Gap(0, w: 10),
               Expanded(child: Text('AKPSatu', style: ts(18, w: FontWeight.w800, c: Colors.white))),
-              Semantics(
-                button: true,
-                label: 'Notifikasi, 7 belum dibaca',
-                child: Material(
-                  color: C.navy2,
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => go(R.notifikasi),
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Stack(alignment: Alignment.center, children: [
-                        const Ic('bell', color: Colors.white),
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: Container(
-                            constraints: const BoxConstraints(minWidth: 18),
-                            height: 18,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(color: const Color(0xFFD64545), borderRadius: BorderRadius.circular(9), border: Border.all(color: C.navy, width: 2)),
-                            child: Text('7', style: ts(11, w: FontWeight.w800, c: Colors.white)),
-                          ),
+              ListenableBuilder(
+                listenable: NotificationCenter.instance,
+                builder: (context, _) {
+                  final n = NotificationCenter.instance.unread;
+                  return Semantics(
+                    button: true,
+                    label: n > 0 ? tr('Notifikasi, $n belum dibaca') : tr('Notifikasi'),
+                    child: Material(
+                      color: C.navy2,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => go(R.notifikasi),
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Stack(alignment: Alignment.center, children: [
+                            const Ic('bell', color: Colors.white),
+                            if (n > 0)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  constraints: const BoxConstraints(minWidth: 18),
+                                  height: 18,
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(color: const Color(0xFFD64545), borderRadius: BorderRadius.circular(9), border: Border.all(color: C.navy, width: 2)),
+                                  child: Text(n > 99 ? '99+' : '$n', style: ts(11, w: FontWeight.w800, c: Colors.white)),
+                                ),
+                              ),
+                          ]),
                         ),
-                      ]),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ]),
             const Gap(16),
@@ -99,15 +129,15 @@ class HomePage extends StatelessWidget {
                   height: 48,
                   alignment: Alignment.center,
                   decoration: const BoxDecoration(color: Color(0xFFDCE7FB), shape: BoxShape.circle),
-                  child: Text('EA', style: ts(16, w: FontWeight.w800, c: C.blueFg)),
+                  child: Text(Session.instance.name.isEmpty ? 'EA' : Session.instance.initials, style: ts(16, w: FontWeight.w800, c: C.blueFg)),
                 ),
               ),
               const Gap(0, w: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Selamat datang,', style: ts(13, c: C.pale, h: 1.35)),
-                  Text('Eddy Adha Saputra', style: ts(18, w: FontWeight.w800, c: Colors.white, h: 1.35)),
-                  Text('32601949 · Supervisor IT', style: ts(12, c: C.pale, h: 1.35)),
+                  Text(Session.instance.nameOr('Eddy Adha Saputra'), maxLines: 1, overflow: TextOverflow.ellipsis, style: ts(18, w: FontWeight.w800, c: Colors.white, h: 1.35)),
+                  Text(Session.instance.name.isEmpty ? '32601949 · Supervisor IT' : [Session.instance.nik, if (Session.instance.user['position'] != null) Session.instance.user['position']].join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: ts(12, c: C.pale, h: 1.35)),
                 ]),
               ),
             ]),
@@ -118,18 +148,20 @@ class HomePage extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(children: [
-              _card(
-                child: Column(children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Minggu, 4 Oktober 2026', style: ts(12, c: C.muted)),
-                      Text('Day shift · 07:00 – 19:00', style: ts(15, w: FontWeight.w700)),
-                    ])),
-                    const Pill('Hadir', tone: Tone.ok),
+              TodayAttendance(
+                builder: (t) => _card(
+                  child: Column(children: [
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(t.dateLabel, style: ts(12, c: C.muted)),
+                        Text(t.hoursLabel, style: ts(15, w: FontWeight.w700)),
+                      ])),
+                      Pill(t.status, tone: t.ok ? Tone.ok : Tone.warn),
+                    ]),
+                    const Gap(12),
+                    Row(children: [_time('Masuk', t.inTime), const Gap(0, w: 10), _time('Pulang', t.outTime)]),
                   ]),
-                  const Gap(12),
-                  Row(children: [_time('Masuk', '06:52'), const Gap(0, w: 10), _time('Pulang', '--:--')]),
-                ]),
+                ),
               ),
               const Gap(14),
               Material(
@@ -197,6 +229,8 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ]),
+    ),
+      ),
     );
   }
 }
@@ -224,18 +258,71 @@ class _PromoBannerState extends State<PromoBanner> {
   final ctrl = PageController();
   int i = 0;
   Timer? timer;
+  List<PromoItem> live = const []; // banner dari Portal (disimpan di perangkat); kosong = tampilan contoh
+
+  int get _count => live.isNotEmpty ? live.length : _promos.length;
 
   @override
   void initState() {
     super.initState();
+    Refresh.add(_loadBanners);
     timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!ctrl.hasClients) return;
-      ctrl.animateToPage((i + 1) % _promos.length, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+      if (!ctrl.hasClients || _count < 2) return;
+      ctrl.animateToPage((i + 1) % _count, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
     });
+    _loadBanners();
   }
+
+  /// Tampilkan banner tersimpan dulu (langsung, tanpa jaringan), lalu cek perubahan ke Portal.
+  Future<void> _loadBanners() async {
+    if (!Session.instance.active) return;
+    final cached = await BannerStore.instance.cached();
+    if (mounted && cached.isNotEmpty) setState(() => live = cached);
+    final fresh = await BannerStore.instance.refresh();
+    if (mounted && fresh != null) {
+      setState(() {
+        live = fresh;
+        i = 0;
+      });
+      if (ctrl.hasClients) ctrl.jumpToPage(0);
+    }
+  }
+
+  Future<void> _open(PromoItem p) async {
+    final uri = Uri.tryParse(p.linkUrl);
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  /// Kartu banner dari Portal: gambar + teks di atas lapisan gelap.
+  Widget _liveCard(PromoItem p) => Semantics(
+        button: p.linkUrl.isNotEmpty,
+        label: p.title,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Material(
+            color: C.navy,
+            child: InkWell(
+              onTap: p.linkUrl.isEmpty ? null : () => _open(p),
+              child: Stack(fit: StackFit.expand, children: [
+                if (p.imageUrl.isNotEmpty) _BannerImage(key: ValueKey(p.imageUrl), url: p.imageUrl),
+                const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xCC0E1C38)]))),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
+                    Text(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: ts(17, w: FontWeight.w800, c: Colors.white, h: 1.25)),
+                    if (p.subtitle.isNotEmpty) ...[const Gap(4), Text(p.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: ts(12, c: const Color(0xFFDCE7FB), h: 1.4))],
+                    if (p.linkUrl.isNotEmpty) ...[const Gap(6), Text('${p.linkLabel.isEmpty ? 'Selengkapnya' : p.linkLabel} →', style: ts(12, w: FontWeight.w700, c: Colors.white))],
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
 
   @override
   void dispose() {
+    Refresh.remove(_loadBanners);
     timer?.cancel();
     ctrl.dispose();
     super.dispose();
@@ -248,9 +335,10 @@ class _PromoBannerState extends State<PromoBanner> {
           height: (MediaQuery.sizeOf(context).width < 380 ? 168 : 140) * (MediaQuery.textScalerOf(context).scale(14) / 14),
           child: PageView.builder(
             controller: ctrl,
-            itemCount: _promos.length,
+            itemCount: _count,
             onPageChanged: (v) => setState(() => i = v),
             itemBuilder: (_, k) {
+              if (live.isNotEmpty) return _KeepAlive(key: ValueKey(live[k].imageUrl), child: _liveCard(live[k]));
               final p = _promos[k];
               return Semantics(
                 button: true,
@@ -286,10 +374,158 @@ class _PromoBannerState extends State<PromoBanner> {
         ),
         const Gap(8),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          for (var k = 0; k < _promos.length; k++) ...[
+          for (var k = 0; k < _count; k++) ...[
             if (k > 0) const Gap(0, w: 5),
             Container(width: k == i ? 16 : 6, height: 6, decoration: BoxDecoration(color: k == i ? C.blue : const Color(0xFFC4CDD9), borderRadius: BorderRadius.circular(3))),
           ],
         ]),
       ]);
+}
+
+
+/// Isi kartu "hari ini" di beranda.
+class TodayInfo {
+  final String dateLabel, hoursLabel, status, inTime, outTime;
+  final bool ok;
+  const TodayInfo(this.dateLabel, this.hoursLabel, this.status, this.inTime, this.outTime, this.ok);
+}
+
+/// Absensi hari ini milik karyawan yang login (dari HRIS). Tanpa sesi, tampil data contoh.
+class TodayAttendance extends StatefulWidget {
+  final Widget Function(TodayInfo info) builder;
+  const TodayAttendance({super.key, required this.builder});
+  @override
+  State<TodayAttendance> createState() => _TodayAttendanceState();
+}
+
+class _TodayAttendanceState extends State<TodayAttendance> {
+  Future<Map<String, dynamic>>? future;
+
+  static String _month(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}';
+  static String _day(DateTime d) => '${_month(d)}-${d.day.toString().padLeft(2, '0')}';
+
+  /// Bulan ini; bila belum ada catatan sama sekali (mis. awal bulan) ikut ambil bulan lalu agar data terakhir tetap tampil.
+  Future<Map<String, dynamic>> _fetch() async {
+    final n = DateTime.now();
+    final cur = await Api.instance.attendance(_month(n));
+    if ((cur['days'] as List).isNotEmpty) return cur;
+    try {
+      final prev = await Api.instance.attendance(_month(DateTime(n.year, n.month - 1, 1)));
+      return {...cur, 'days': prev['days']};
+    } catch (_) {
+      return cur;
+    }
+  }
+
+  void _load() => future = _fetch();
+
+  Future<void> _reload() async {
+    if (!Session.instance.active || !mounted) return;
+    setState(_load);
+    try {
+      await future;
+    } catch (_) {}
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (Session.instance.active) _load();
+    Refresh.add(_reload);
+  }
+
+  @override
+  void dispose() {
+    Refresh.remove(_reload);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    L.watch(context);
+    final l = L.instance;
+    final n = DateTime.now();
+    final todayLabel = l.longDate(n);
+    if (future == null) return widget.builder(TodayInfo(l.longDate(DateTime(2026, 10, 4)), 'Day shift · 07:00 – 19:00', 'Hadir', '06:52', '--:--', true));
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: future,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return widget.builder(TodayInfo(todayLabel, snap.hasError ? 'Absensi belum bisa dimuat' : 'Memuat absensi...', snap.hasError ? 'Offline' : '...', '--:--', '--:--', false));
+        }
+        final data = snap.data!;
+        final hours = Map<String, dynamic>.from(data['work_hours'] as Map);
+        final hoursLabel = 'Jam kerja · ${hours['start']} – ${hours['end']}';
+
+        // Catatan hari ini; bila belum ada, catatan terakhir yang tersedia.
+        final days = (data['days'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList()..sort((a, b) => (b['date'] as String).compareTo(a['date'] as String));
+        final key = _day(n);
+        final rec = days.where((d) => d['date'] == key).firstOrNull ?? days.firstOrNull;
+        if (rec == null) return widget.builder(TodayInfo(todayLabel, hoursLabel, 'Belum absen', '--:--', '--:--', false));
+
+        final isToday = rec['date'] == key;
+        final inT = rec['in'] as String?, outT = rec['out'] as String?;
+        final late = rec['late'] == true;
+        final status = inT == null ? 'Belum absen' : (late ? 'Terlambat' : 'Hadir');
+        final label = isToday ? todayLabel : '${l.longDate(DateTime.parse(rec['date'] as String))} · Data terakhir';
+        return widget.builder(TodayInfo(label, hoursLabel, status, inT ?? '--:--', outT ?? '--:--', inT != null && !late));
+      },
+    );
+  }
+}
+
+
+/// Gambar banner dari Portal: PNG/JPG/WebP atau SVG (banner bawaan Portal berupa SVG, yang tidak bisa didekode Image biasa).
+/// Diunduh sekali ke penyimpanan perangkat (kunci = alamat + ?v= dari Portal), lalu dibaca dari sana.
+class _BannerImage extends StatefulWidget {
+  final String url;
+  const _BannerImage({super.key, required this.url});
+  @override
+  State<_BannerImage> createState() => _BannerImageState();
+}
+
+class _BannerImageState extends State<_BannerImage> {
+  late final Future<Widget?> image = _load();
+
+  Future<Widget?> _load() async {
+    try {
+      final Uint8List bytes;
+      if (kIsWeb) {
+        final res = await http.get(Uri.parse(widget.url));
+        if (res.statusCode != 200) return null;
+        bytes = res.bodyBytes;
+      } else {
+        bytes = await (await DefaultCacheManager().getSingleFile(widget.url)).readAsBytes();
+      }
+      final head = utf8.decode(bytes.take(1024).toList(), allowMalformed: true).toLowerCase();
+      return head.contains('<svg') ? SvgPicture.memory(bytes, fit: BoxFit.cover) : Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Widget?>(
+        future: image,
+        builder: (_, snap) => snap.data ?? const ColoredBox(color: C.navy),
+      );
+}
+
+/// Menjaga halaman PageView tetap hidup di luar layar, supaya gambar tidak dimuat ulang (dan hilang) saat digeser.
+class _KeepAlive extends StatefulWidget {
+  final Widget child;
+  const _KeepAlive({super.key, required this.child});
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }

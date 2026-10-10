@@ -1,8 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import 'package:flutter/rendering.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'icons_data.dart';
 import 'theme.dart';
+import 'l10n/text.dart';
+import 'l10n/lang.dart';
+export 'l10n/text.dart' show Text;
 
 enum Tone { ok, warn, bad, info, neutral, purple }
 
@@ -280,7 +283,7 @@ class LabeledField extends StatelessWidget {
 }
 
 InputDecoration fieldDeco({String? hint}) => InputDecoration(
-      hintText: hint,
+      hintText: hint == null ? null : tr(hint),
       isDense: false,
       filled: true,
       fillColor: Colors.white,

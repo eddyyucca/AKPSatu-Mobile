@@ -46,3 +46,10 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Rahasia lokal (token AKP Mail)
+/env.json
+
+# Konfigurasi uji lokal (berisi token)
+/env.local.json
+/env.emulator.json

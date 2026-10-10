@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../api/api.dart';
+import '../l10n/lang.dart';
+import '../refresh.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'shell.dart';
@@ -17,6 +20,103 @@ class AttendancePage extends StatefulWidget {
 
 class _AttendancePageState extends State<AttendancePage> {
   int i = 1;
+  int back = 0; // 0 = bulan ini, 1 = bulan lalu, dst. (hanya mode data asli)
+  Future<Map<String, dynamic>>? live;
+  static const _hari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+  DateTime get _month {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month - back, 1);
+  }
+
+  String get _monthKey => '${_month.year}-${_month.month.toString().padLeft(2, '0')}';
+
+  void _load() => live = Api.instance.attendance(_monthKey);
+
+  @override
+  void initState() {
+    super.initState();
+    if (Session.instance.active) _load();
+  }
+
+  void _shift(int delta) => setState(() {
+        back = (back + delta).clamp(0, 12);
+        _load();
+      });
+
+  /// Kartu satu hari absensi dari server.
+  Widget _day(Map<String, dynamic> d, Map<String, dynamic> hours) {
+    final date = DateTime.parse(d['date'] as String);
+    final inT = d['in'] as String?, outT = d['out'] as String?;
+    final late = d['late'] == true, early = d['early'] == true;
+    final label = inT == null ? 'Tidak ada tap' : (late ? 'Terlambat' : (outT == null ? 'Belum pulang' : (early ? 'Pulang awal' : 'Tepat waktu')));
+    final tone = (inT == null || late || early || outT == null) ? Tone.warn : Tone.ok;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+        child: IntrinsicHeight(
+          child: Row(children: [
+            SizedBox(
+              width: 48,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(date.day.toString().padLeft(2, '0'), style: ts(20, w: FontWeight.w800, h: 1.15)),
+                Text(_hari[date.weekday - 1], style: ts(12, c: C.muted, h: 1.15)),
+              ]),
+            ),
+            const Gap(0, w: 14),
+            Container(width: 1, color: const Color(0xFFEEF1F5)),
+            const Gap(0, w: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text('Jam kerja · ${hours['start']} – ${hours['end']}', style: ts(13, c: C.muted, h: 18.85 / 13)),
+                Text('Masuk ${inT ?? '--:--'} · Pulang ${outT ?? '--:--'}', style: ts(14, w: FontWeight.w700, h: 20.3 / 14)),
+              ]),
+            ),
+            const Gap(0, w: 14),
+            Center(child: Pill(label, tone: tone)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _liveBody() => FutureBuilder<Map<String, dynamic>>(
+        future: live,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Padding(padding: EdgeInsets.symmetric(vertical: 60), child: Center(child: CircularProgressIndicator()));
+          }
+          if (snap.hasError) {
+            final e = snap.error;
+            if (e is ApiException && e.unauthenticated) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
+              });
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Column(children: [
+                Text('$e', textAlign: TextAlign.center, style: ts(14, c: C.red, h: 1.5)),
+                const Gap(12),
+                PrimaryButton('Coba lagi', onTap: () => setState(_load)),
+              ]),
+            );
+          }
+          final data = snap.data!;
+          final sum = Map<String, dynamic>.from(data['summary'] as Map);
+          final days = (data['days'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          final hours = Map<String, dynamic>.from(data['work_hours'] as Map);
+          int n(String k) => (sum[k] as num?)?.toInt() ?? 0;
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [_sm(n('present'), 'Hadir', C.greenFg), const Gap(0, w: 10), _sm(n('late'), 'Terlambat', C.orangeFg), const Gap(0, w: 10), _sm(n('absent'), 'Tidak hadir', C.red)]),
+            const Gap(16),
+            Text(days.isEmpty ? 'Belum ada catatan absensi bulan ini' : '${days.length} catatan · terbaru di atas', style: ts(13, c: C.muted)),
+            for (final d in days) _day(d, hours),
+          ]);
+        },
+      );
   static const months = [
     ('September 2026', 23, 2, 0, '7 catatan terakhir', [
       _Rec('30', 'Rab', '06:48', '19:05'),
@@ -62,6 +162,28 @@ class _AttendancePageState extends State<AttendancePage> {
 
   @override
   Widget build(BuildContext context) {
+    L.watch(context);
+    if (live != null) {
+      return Column(children: [
+        TabHeader('Riwayat Absensi',
+            extra: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              _navBtn('Bulan sebelumnya', () => _shift(1)),
+              Text(L.instance.monthYear(_month), style: ts(16, w: FontWeight.w700)),
+              _navBtn('Bulan berikutnya', () => _shift(-1), flip: true),
+            ])),
+        Expanded(
+          child: PullToRefresh(
+            onRefresh: () async {
+              setState(_load);
+              try {
+                await live;
+              } catch (_) {}
+            },
+            child: SingleChildScrollView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(16), child: _liveBody()),
+          ),
+        ),
+      ]);
+    }
     final m = months[i];
     return Column(children: [
       TabHeader('Riwayat Absensi',

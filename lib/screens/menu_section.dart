@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../l10n/lang.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -30,6 +31,7 @@ const _all = <_Mi>[
   _Mi('P2H Online', 'truck', Color(0xFFFFF1E0), Color(0xFF9A4A06), 'HSE & Keselamatan', R.p2h, keys: 'kendaraan unit lv periksa harian'),
   _Mi('PTW Online', 'ptw', Color(0xFFFDE8E8), Color(0xFF9C2B1F), 'HSE & Keselamatan', R.ptw, keys: 'permit to work izin kerja'),
   _Mi('Camp Facility', 'camp', Color(0xFFE3E8EF), Color(0xFF0E2A47), 'GA & Camp', R.camp, keys: 'mess kamar laundry fasilitas'),
+  _Mi('Komplain GA', 'wrench', Color(0xFFFFF1E0), Color(0xFFC2610C), 'GA & Camp', R.komplain, keys: 'komplain laporan keluhan fasilitas kamar housekeeping laundry mess ac rusak'),
   _Mi('Itinerary Cuti', 'plane', Color(0xFFFBE3EC), Color(0xFF9C2155), 'GA & Camp', R.itinerary, keys: 'perjalanan lumpsum tiket'),
   _Mi('Jemputan & Tiket', 'bus', Color(0xFFE6EEFD), Color(0xFF1E5BD7), 'GA & Camp', R.perjalanan, keys: 'bus bandara pesawat kursi'),
   _Mi('Barcode Makan', 'qr', Color(0xFFE2F4E8), Color(0xFF1A6B3A), 'GA & Camp', R.makan, keys: 'kantin menu jatah makan'),
@@ -107,7 +109,7 @@ class _MenuSectionState extends State<MenuSection> {
   @override
   Widget build(BuildContext context) {
     final query = q.trim().toLowerCase();
-    final found = query.isEmpty ? <_Mi>[] : _all.where((m) => '${m.label} ${m.dept} ${m.keys}'.toLowerCase().contains(query)).toList();
+    final found = query.isEmpty ? <_Mi>[] : _all.where((m) => '${m.label} ${tr(m.label)} ${m.dept} ${tr(m.dept)} ${m.keys}'.toLowerCase().contains(query)).toList();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
@@ -123,7 +125,7 @@ class _MenuSectionState extends State<MenuSection> {
               textInputAction: TextInputAction.search,
               style: ts(14, w: FontWeight.w400),
               decoration: InputDecoration(
-                hintText: 'Cari menu (mis. cuti, PTW, makan)',
+                hintText: tr('Cari menu (mis. cuti, PTW, makan)'),
                 hintStyle: ts(14, c: const Color(0xFF757575), w: FontWeight.w400),
                 filled: true,
                 fillColor: C.bg,
@@ -132,7 +134,7 @@ class _MenuSectionState extends State<MenuSection> {
                 suffixIcon: q.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: 'Hapus pencarian',
+                        tooltip: tr('Hapus pencarian'),
                         icon: const Ic('close', size: 18, stroke: 2, color: C.muted),
                         onPressed: () => setState(() {
                           ctrl.clear();

@@ -10,6 +10,7 @@ import 'screens/learning.dart';
 import 'screens/leave.dart';
 import 'screens/mine_map.dart';
 import 'screens/notif.dart';
+import 'screens/overtime.dart';
 import 'screens/p2h.dart';
 import 'screens/ptw.dart';
 import 'screens/requests.dart';
@@ -17,6 +18,7 @@ import 'screens/roster.dart';
 import 'screens/shell.dart';
 import 'screens/trip.dart';
 import 'screens/itinerary.dart';
+import 'screens/komplain.dart';
 import 'screens/profile.dart';
 import 'screens/splash.dart';
 
@@ -53,6 +55,9 @@ class R {
   static const ptwForm = '/ptw/buat';
   static const learning = '/learning';
   static const peta = '/peta';
+  static const komplain = '/komplain';
+  static const komplainForm = '/komplain/lapor';
+  static const komplainDetail = '/komplain/detail';
 }
 
 final Map<String, WidgetBuilder> routes = {
@@ -88,4 +93,7 @@ final Map<String, WidgetBuilder> routes = {
   R.ptwForm: (_) => const PtwFormScreen(),
   R.learning: (_) => const LearningScreen(),
   R.peta: (_) => const MineMapScreen(),
+  R.komplain: (_) => const KomplainScreen(),
+  R.komplainForm: (_) => const KomplainFormScreen(),
+  R.komplainDetail: (_) => const KomplainDetailScreen(),
 };

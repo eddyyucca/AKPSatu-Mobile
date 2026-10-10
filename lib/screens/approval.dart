@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../l10n/lang.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -196,7 +197,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
           textAlignVertical: TextAlignVertical.top,
           style: ts(14, w: FontWeight.w400),
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: tr(hint),
             hintStyle: ts(14, c: const Color(0xFF757575), w: FontWeight.w400),
             filled: true,
             fillColor: Colors.white,

@@ -49,7 +49,7 @@ void main() {
       });
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
-      if (e.key == '/splash') await tester.pump(const Duration(milliseconds: 1700)); // ~2,5 dtk: logo & judul sudah tampil
+      if (e.key == '/splash') await tester.pump(const Duration(milliseconds: 1000)); // ~1,8 dtk (splash 2 dtk): logo & judul sudah tampil
       final err = tester.takeException();
       if (shotsDir.isNotEmpty) {
         await tester.runAsync(() async {

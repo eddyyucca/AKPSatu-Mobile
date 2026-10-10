@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
 import '../theme.dart';
 import '../widgets.dart';
 import 'shell.dart';

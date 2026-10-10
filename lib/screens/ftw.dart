@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Text;
+import '../l10n/lang.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -91,7 +92,7 @@ class _FtwScreenState extends State<FtwScreen> {
               maxLines: 2,
               style: ts(15),
               decoration: InputDecoration(
-                hintText: 'Contoh: pusing, nyeri punggung',
+                hintText: tr('Contoh: pusing, nyeri punggung'),
                 hintStyle: ts(15, c: const Color(0xFF757575)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 isDense: true,

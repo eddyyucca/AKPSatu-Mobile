@@ -1,0 +1,7 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    { "name": "AKPSatu (debug)", "request": "launch", "type": "dart" },
+    { "name": "AKPSatu (release)", "request": "launch", "type": "dart", "flutterMode": "release" }
+  ]
+}
