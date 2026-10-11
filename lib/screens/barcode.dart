@@ -1,44 +1,14 @@
 import 'package:flutter/material.dart' hide Text;
+import 'package:qr_flutter/qr_flutter.dart';
+import '../api/api.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'shell.dart';
 
+/// QR makan: sama persis pola `absensi-kantin` (lihat Modules kartu karyawan di sana) -- QR berisi NIK
+/// polos (tanpa prefiks/JSON), error correction level H, kiosk kantin membacanya langsung sebagai NIK.
 class BarcodePage extends StatelessWidget {
   const BarcodePage({super.key});
-
-  static List<List<bool>> _matrix() {
-    const n = 25;
-    var seed = 1749;
-    double rnd() {
-      seed = (seed * 9301 + 49297) % 233280;
-      return seed / 233280;
-    }
-
-    int finder(int r, int c) {
-      for (final o in [(0, 0), (0, n - 7), (n - 7, 0)]) {
-        final dr = r - o.$1, dc = c - o.$2;
-        if (dr >= -1 && dr <= 7 && dc >= -1 && dc <= 7) {
-          if (dr < 0 || dr > 6 || dc < 0 || dc > 6) return 0;
-          final ring = dr == 0 || dr == 6 || dc == 0 || dc == 6;
-          final core = dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4;
-          return ring || core ? 1 : 0;
-        }
-      }
-      return -1;
-    }
-
-    return [
-      for (var r = 0; r < n; r++)
-        [
-          for (var c = 0; c < n; c++)
-            () {
-              var v = finder(r, c);
-              if (v == -1) v = (r == 6 || c == 6) ? ((r + c) % 2 == 0 ? 1 : 0) : (rnd() > .52 ? 1 : 0);
-              return v == 1;
-            }()
-        ]
-    ];
-  }
 
   Widget _meal(String t, String menu, String time, String badge, Tone tone, {bool first = false}) => Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -58,7 +28,7 @@ class BarcodePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final m = _matrix();
+    final nik = Session.instance.nikOr('32601949');
     return Column(children: [
       const TabHeader('Barcode Makan'),
       Expanded(
@@ -70,15 +40,17 @@ class BarcodePage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
               child: Column(children: [
-                Text('Eddy Adha Saputra', style: ts(17, w: FontWeight.w800, h: 1.4)),
-                Text('NIK 32601949 · IT Department', style: ts(13, c: C.muted, h: 1.4)),
+                Text(Session.instance.nameOr('Eddy Adha Saputra'), style: ts(17, w: FontWeight.w800, h: 1.4)),
+                Text('NIK $nik${Session.instance.headline.isEmpty ? '' : ' · ${Session.instance.headline}'}', style: ts(13, c: C.muted, h: 1.4)),
                 const Gap(14),
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(12)),
                   child: Semantics(
-                    label: 'QR code makan untuk NIK 32601949',
-                    child: CustomPaint(size: const Size(225, 225), painter: _QrPainter(m)),
+                    label: 'QR code makan untuk NIK $nik',
+                    // Payload = NIK polos, sama seperti kartu karyawan di absensi-kantin (qrcodejs, correctLevel H);
+                    // kiosk kantin membaca string ini langsung sebagai NIK, tanpa prefiks/JSON.
+                    child: QrImageView(data: nik, version: QrVersions.auto, size: 225, errorCorrectionLevel: QrErrorCorrectLevel.H, backgroundColor: Colors.white),
                   ),
                 ),
                 const Gap(14),
@@ -105,23 +77,4 @@ class BarcodePage extends StatelessWidget {
       ),
     ]);
   }
-}
-
-class _QrPainter extends CustomPainter {
-  final List<List<bool>> m;
-  _QrPainter(this.m);
-  @override
-  void paint(Canvas canvas, Size size) {
-    final n = m.length;
-    const cell = 9.0;
-    final p = Paint()..color = C.navy..isAntiAlias = false;
-    for (var r = 0; r < n; r++) {
-      for (var c = 0; c < n; c++) {
-        if (m[r][c]) canvas.drawRect(Rect.fromLTWH(c * cell, r * cell, cell, cell), p);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }

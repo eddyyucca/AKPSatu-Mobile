@@ -13,6 +13,7 @@ import '../api/banners.dart';
 import '../api/notifications.dart';
 import '../pattern.dart';
 import '../refresh.dart';
+import '../features.dart';
 import '../routes.dart';
 import 'menu_section.dart';
 import '../theme.dart';
@@ -163,6 +164,7 @@ class HomePage extends StatelessWidget {
                   ]),
                 ),
               ),
+              if (kApprovalEnabled) ...[
               const Gap(14),
               Material(
                 color: C.navy,
@@ -192,6 +194,7 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
               ),
+              ],
               const Gap(14),
               const PromoBanner(),
               const Gap(14),

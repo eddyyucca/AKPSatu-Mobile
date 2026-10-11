@@ -379,6 +379,73 @@ const dict = <String, (String, String)>{
   'Sudah dikerjakan': ('Already worked', '근무 완료'),
   'Sesuaikan jam lembur': ('Adjust overtime hours', '초과근무 시간 조정'),
 
+  // — Cuti (modul Leave: pengajuan, saldo, itinerary & perjalanan) —
+  'No. pengajuan': ('Request no.', '신청 번호'),
+  'Kebutuhan perjalanan': ('Travel needs', '여행 필요사항'),
+  'Diisi oleh GA / Travel setelah disetujui': ('Filled in by GA / Travel after approval', '승인 후 GA/Travel 담당자가 입력합니다'),
+  'Mess ↔ bandara, berangkat & kembali': ('Mess ↔ airport, outbound & return', '숙소 ↔ 공항, 출발·귀환'),
+  'Masuk terlebih dahulu untuk mengajukan cuti.': ('Sign in first to request leave.', '휴가를 신청하려면 먼저 로그인하세요.'),
+  'Masuk terlebih dahulu untuk melihat cuti.': ('Sign in first to see your leave.', '휴가를 보려면 먼저 로그인하세요.'),
+  'Menunggu persetujuan atasan langsung, lalu konfirmasi HR. Anda akan menerima notifikasi setiap ada perubahan status.': (
+    'Waiting for approval from your direct supervisor, then HR confirmation. You will be notified of any status change.',
+    '직속 상사의 승인을 기다린 후 HR이 확인합니다. 상태가 바뀔 때마다 알림을 받습니다.'
+  ),
+  'Lihat Itinerary': ('View Itinerary', '여정 보기'),
+  'Isi alasan cuti.': ('Enter the reason for leave.', '휴가 사유를 입력하세요.'),
+  'Jelaskan alasan cuti': ('Describe the reason for leave', '휴가 사유를 설명하세요'),
+  'Belum ada pengajuan cuti.': ('No leave requests yet.', '휴가 신청 내역이 없습니다.'),
+  'Pengajuan tidak ditemukan.': ('Request not found.', '신청을 찾을 수 없습니다.'),
+  'Menunggu atasan': ('Awaiting supervisor', '상사 승인 대기'),
+  'Menunggu HR': ('Awaiting HR', 'HR 확인 대기'),
+  'Disetujui atasan': ('Approved by supervisor', '상사 승인됨'),
+  'Ditolak atasan': ('Rejected by supervisor', '상사 반려됨'),
+  'Disetujui HR': ('Approved by HR', 'HR 승인됨'),
+  'Ditolak HR': ('Rejected by HR', 'HR 반려됨'),
+  'Catatan: {}': ('Note: {}', '비고: {}'),
+  'Masuk setengah hari': ('Half-day', '반일 근무'),
+  'Berangkat setelah jam kerja siang.': ('Departs after the midday work hours.', '오후 근무 후 출발합니다.'),
+  'Kembali bekerja.': ('Back to work.', '업무에 복귀합니다.'),
+  'Penerbangan keberangkatan': ('Outbound flight', '출발 항공편'),
+  'Penerbangan kepulangan': ('Return flight', '귀환 항공편'),
+  'Keberangkatan': ('Departure', '출발'),
+  'Kepulangan': ('Return', '귀환'),
+  'Belum diisi HR/GA.': ('Not filled in by HR/GA yet.', '아직 HR/GA가 입력하지 않았습니다.'),
+  'Kursi {}': ('Seat {}', '좌석 {}'),
+  'Kursi': ('Seat', '좌석'),
+  'Denah kursi (depan di atas)': ('Seat map (front at top)', '좌석 배치도 (상단이 앞쪽)'),
+  'Penerbangan': ('Flight', '항공편'),
+  'Transport darat': ('Ground transport', '육상 교통'),
+  'Pengajuan ini tidak menandai kebutuhan tiket/jemputan.': ('This request does not mark a need for ticket/shuttle.', '이 신청은 티켓/셔틀이 필요하다고 표시되지 않았습니다.'),
+  'Data tiket/transport untuk {} belum diisi HR/GA. Hubungi HR Department.': (
+    'Ticket/transport details for {} have not been filled in by HR/GA yet. Contact HR Department.',
+    '{} 티켓/교통 정보가 아직 HR/GA에 의해 입력되지 않았습니다. HR 부서에 문의하세요.'
+  ),
+  'Berangkat · {}': ('Depart · {}', '출발 · {}'),
+  'Kembali · {}': ('Return · {}', '귀환 · {}'),
+  'Berlaku sampai 31 Des 2026': ('Valid until 31 Dec 2026', '2026년 12월 31일까지 유효'),
+
+  // Pesan validasi dari server HRIS (modul Leave)
+  'Jenis cuti tidak dikenal.': ('Unknown leave type.', '알 수 없는 휴가 유형입니다.'),
+  'Karyawan ini belum memiliki siklus Cuti Roster (Sistem Cuti). Hubungi HR atau gunakan Cuti Tahunan.': (
+    'This employee does not have a Roster Leave cycle yet. Contact HR or use Annual Leave instead.',
+    '이 직원은 아직 로스터 휴가 주기가 없습니다. HR에 문의하거나 연차를 사용하세요.'
+  ),
+  'Tanggal mulai terlalu jauh di masa depan.': ('Start date is too far in the future.', '시작일이 너무 먼 미래입니다.'),
+  'Tanggal mulai cuti harus dekat dengan jadwal siklus roster Anda ({}), maksimal {} hari berbeda.': (
+    'The leave start date must be close to your roster cycle schedule ({}), at most {} days apart.',
+    '휴가 시작일은 로스터 주기 일정({})과 최대 {}일 이내로 가까워야 합니다.'
+  ),
+  'Tanggal cuti tidak boleh di masa lalu.': ('Leave date cannot be in the past.', '휴가 날짜는 과거일 수 없습니다.'),
+  'Sudah ada pengajuan cuti lain yang bentrok pada rentang tanggal tersebut.': (
+    'There is already another leave request overlapping that date range.',
+    '해당 기간과 겹치는 다른 휴가 신청이 이미 있습니다.'
+  ),
+  'Pengajuan cuti dengan tiket/jemputan harus diajukan paling lambat {} hari sebelum keberangkatan ({}).': (
+    'Leave requests with ticket/shuttle must be submitted at least {} days before departure ({}).',
+    '티켓/셔틀이 필요한 휴가 신청은 출발 최소 {}일 전({})까지 제출해야 합니다.'
+  ),
+  'Durasi melebihi sisa cuti tahunan ({} hari).': ('Duration exceeds the remaining annual leave ({} days).', '기간이 남은 연차({}일)를 초과합니다.'),
+
   // — Mess / kantin dll. (umum) —
   'Cari': ('Search', '검색'),
   'Lihat panduan': ('View guide', '가이드 보기'),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide Text;
 import '../l10n/lang.dart';
+import '../features.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -39,7 +40,7 @@ const _all = <_Mi>[
   _Mi('Layanan Klinik', 'plus', Color(0xFFFDE8E8), Color(0xFFB42318), 'Kesehatan', null, keys: 'dokter obat berobat'),
   _Mi('My Activity', 'tasks', Color(0xFFE3E8EF), Color(0xFF0E2A47), 'Operasional & Site', R.myActivity, keys: 'form kerja tugas follow up laporan'),
   _Mi('Peta Tambang', 'pin', Color(0xFFE3E8EF), Color(0xFF0E2A47), 'Operasional & Site', R.peta, keys: 'mine plan progres pit survey'),
-  _Mi('Persetujuan', 'approve', Color(0xFFE6EEFD), Color(0xFF1E5BD7), 'Operasional & Site', R.approval, keys: 'approval atasan setujui'),
+  _Mi('Persetujuan', 'approve', Color(0xFFE6EEFD), Color(0xFF1E5BD7), 'Operasional & Site', kApprovalEnabled ? R.approval : null, keys: 'approval atasan setujui'),
   _Mi('Helpdesk IT', 'wrench', Color(0xFFEFE9FD), Color(0xFF5B32B8), 'IT & Layanan', null, keys: 'tiket komputer jaringan printer bantuan'),
 ];
 

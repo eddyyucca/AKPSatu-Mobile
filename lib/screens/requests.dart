@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart' hide Text;
+import '../api/api.dart';
 import '../l10n/lang.dart';
+import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -31,12 +33,14 @@ class InpText extends StatelessWidget {
   final double fontSize;
   final double height;
   final bool small;
-  const InpText({super.key, this.initial, this.hint, this.readOnly = false, this.type, this.fontSize = 15, this.height = 48, this.small = false});
+  final TextEditingController? controller;
+  const InpText({super.key, this.initial, this.hint, this.readOnly = false, this.type, this.fontSize = 15, this.height = 48, this.small = false, this.controller});
   @override
   Widget build(BuildContext context) => SizedBox(
         height: height,
         child: TextFormField(
-          initialValue: initial,
+          controller: controller,
+          initialValue: controller == null ? initial : null,
           readOnly: readOnly,
           keyboardType: type,
           style: ts(fontSize, c: readOnly ? const Color(0xFF3D4B5E) : C.text, w: FontWeight.w400),
@@ -54,21 +58,27 @@ class InpText extends StatelessWidget {
       );
 }
 
-/// `<textarea class="ta">`.
+/// `<textarea class="ta">`. [controller] opsional: saat diisi, teks dibaca/diubah lewat controller (nilai awal diabaikan);
+/// tanpa controller, berperan statis seperti sebelumnya (`initialValue`, tidak bisa dibaca balik).
 class TaField extends StatelessWidget {
   final String initial;
   final int rows;
-  const TaField(this.initial, {super.key, this.rows = 2});
+  final TextEditingController? controller;
+  final String? hint;
+  const TaField(this.initial, {super.key, this.rows = 2, this.controller, this.hint});
   @override
   Widget build(BuildContext context) => SizedBox(
         height: rows == 2 ? 64 : 83,
         child: TextFormField(
-          initialValue: initial,
+          controller: controller,
+          initialValue: controller == null ? initial : null,
           maxLines: null,
           expands: true,
           textAlignVertical: TextAlignVertical.top,
           style: ts(15, w: FontWeight.w400),
           decoration: InputDecoration(
+            hintText: hint == null ? null : tr(hint!),
+            hintStyle: ts(14, c: const Color(0xFF757575), w: FontWeight.w400),
             filled: true,
             fillColor: Colors.white,
             isDense: true,
@@ -201,7 +211,7 @@ Widget _dlCard(List<(String, String)> rows) => Container(
       ]),
     );
 
-Widget _sentView(BuildContext context, {required String title, required List<InlineSpan> body, required List<(String, String)> rows, required String cta, required VoidCallback onCta, required VoidCallback onReset}) => SingleChildScrollView(
+Widget _sentView(BuildContext context, {required String title, required List<InlineSpan> body, required List<(String, String)> rows, required String cta, required VoidCallback onCta, required VoidCallback onReset, String resetLabel = 'Ajukan lagi (demo)'}) => SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       child: Column(children: [
         Container(width: 84, height: 84, decoration: const BoxDecoration(color: C.blueSoft, shape: BoxShape.circle), child: const Center(child: Ic('send', size: 40, stroke: 2, color: C.blue))),
@@ -214,9 +224,20 @@ Widget _sentView(BuildContext context, {required String title, required List<Inl
         const Gap(14),
         PrimaryButton(cta, onTap: onCta),
         const Gap(14),
-        InkWell(onTap: onReset, child: SizedBox(height: 44, child: Center(child: Text('Ajukan lagi (demo)', style: ts(14, w: FontWeight.w700, c: C.blue))))),
+        InkWell(onTap: onReset, child: SizedBox(height: 44, child: Center(child: Text(resetLabel, style: ts(14, w: FontWeight.w700, c: C.blue))))),
       ]),
     );
+
+/// Jenis cuti: label tampil (sudah ada di kamus terjemahan) -> kode yang dipakai server.
+const _leaveTypeCodes = {
+  'Cuti Tahunan': 'cuti_tahunan',
+  'Cuti Roster': 'cuti_roster',
+  'Cuti Sakit': 'cuti_sakit',
+  'Cuti Melahirkan': 'cuti_melahirkan',
+  'Cuti Menikah': 'cuti_menikah',
+  'Cuti Duka': 'cuti_duka',
+  'Cuti Khusus': 'cuti_khusus',
+};
 
 class LeaveRequestScreen extends StatefulWidget {
   const LeaveRequestScreen({super.key});
@@ -224,152 +245,277 @@ class LeaveRequestScreen extends StatefulWidget {
   State<LeaveRequestScreen> createState() => _LeaveRequestScreenState();
 }
 
+/// Ajukan cuti ke HRIS. Untuk Cuti Roster, tanggal & durasi mengikuti siklus roster karyawan (server menghitung,
+/// termasuk hari buffer perjalanan untuk karyawan non-lokal) -- lihat `Modules/Leave` di HRIS. Jenis cuti lain
+/// (Tahunan, Sakit, dll.) memakai tanggal bebas yang dipilih sendiri.
 class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
   String jenis = 'Cuti Tahunan';
-  DateTime start = DateTime(2026, 11, 9), end = DateTime(2026, 11, 11);
-  String pengganti = 'Fajar Nugroho · Network Engineer';
+  DateTime start = DateTime.now().add(const Duration(days: 14)), end = DateTime.now().add(const Duration(days: 16));
   String kota = 'Makassar (UPG)';
-  bool tiket = false, jemput = false, sent = false;
+  bool tiket = false, jemput = false;
+  final reason = TextEditingController(), address = TextEditingController(), phone = TextEditingController();
 
   static const jenisList = ['Cuti Tahunan', 'Cuti Roster', 'Cuti Sakit', 'Cuti Melahirkan', 'Cuti Menikah', 'Cuti Duka', 'Cuti Khusus'];
 
-  int get days => end.difference(start).inDays + 1;
-  bool get validRange => days >= 1;
+  Map<String, dynamic>? check;
+  bool checking = false;
+  String? checkError;
+
+  bool submitting = false;
+  String? submitError;
+  Map<String, dynamic>? sent;
+
+  String get _code => _leaveTypeCodes[jenis]!;
+  bool get isRoster => check?['roster_driven'] == true;
   bool get isTahunan => jenis == 'Cuti Tahunan';
-  bool get over => validRange && isTahunan && days > 9;
-  bool get travel => tiket || jemput;
+  int get days => isRoster ? ((check?['days'] as num?)?.toInt() ?? 0) : (end.difference(start).inDays + 1);
+  bool get validRange => isRoster ? true : days >= 1;
+  int? get _remaining => (check?['balance'] as Map?)?['remaining'] as int?;
+  bool get over => isTahunan && validRange && _remaining != null && days > _remaining!;
+  bool get canSend => !checking && !submitting && validRange && !over && (!isRoster || check?['ok'] == true);
+
+  static String _iso(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  @override
+  void initState() {
+    super.initState();
+    if (Session.instance.active) _loadCheck(autoCorrect: true);
+  }
+
+  @override
+  void dispose() {
+    reason.dispose();
+    address.dispose();
+    phone.dispose();
+    super.dispose();
+  }
+
+  bool _expired(Object e) {
+    if (e is ApiException && e.unauthenticated) {
+      if (mounted) Navigator.pushNamedAndRemoveUntil(context, R.login, (r) => false);
+      return true;
+    }
+    return false;
+  }
+
+  /// [autoCorrect]: untuk Cuti Roster, bila tanggal saat ini di luar toleransi jendela siklus, langsung pakai
+  /// tanggal saran server dan tanya ulang sekali -- dipakai saat pertama buka / ganti jenis, bukan saat pengguna
+  /// sendiri memilih tanggal (supaya pilihan mereka tidak diam-diam ditimpa).
+  Future<void> _loadCheck({bool autoCorrect = false}) async {
+    setState(() {
+      checking = true;
+      checkError = null;
+    });
+    try {
+      var c = await Api.instance.leaveCheck(_code, startDate: _iso(start));
+      if (autoCorrect && c['roster_driven'] == true && c['ok'] != true) {
+        final w = c['roster_window'] as Map<String, dynamic>?;
+        if (w != null && w['start'] != null) {
+          start = DateTime.parse(w['start'] as String);
+          c = await Api.instance.leaveCheck(_code, startDate: _iso(start));
+        }
+      }
+      if (!mounted) return;
+      setState(() => check = c);
+    } on ApiException catch (e) {
+      if (_expired(e) || !mounted) return;
+      setState(() => checkError = e.message);
+    } finally {
+      if (mounted) setState(() => checking = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!canSend || submitting) return;
+    if (reason.text.trim().isEmpty) {
+      setState(() => submitError = 'Isi alasan cuti.');
+      return;
+    }
+    setState(() {
+      submitting = true;
+      submitError = null;
+    });
+    try {
+      final r = await Api.instance.submitLeave(
+        type: _code,
+        startDate: _iso(start),
+        endDate: isRoster ? null : _iso(end),
+        reason: reason.text.trim(),
+        addressDuringLeave: address.text.trim().isEmpty ? null : address.text.trim(),
+        emergencyPhone: phone.text.trim().isEmpty ? null : phone.text.trim(),
+        needsTicket: tiket,
+        needsPickup: jemput,
+        destinationCity: tiket ? kota : null,
+      );
+      if (mounted) setState(() => sent = r);
+    } on ApiException catch (e) {
+      if (_expired(e) || !mounted) return;
+      setState(() => submitError = e.message);
+      _loadCheck();   // jendela/saldo mungkin berubah
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
+  void _onJenisChanged(String v) {
+    setState(() {
+      jenis = v;
+      if (v == 'Cuti Roster') {
+        tiket = true;
+        jemput = true;
+      }
+      if (v == 'Cuti Sakit') {
+        tiket = false;
+        jemput = false;
+      }
+      check = null;
+      submitError = null;
+    });
+    _loadCheck(autoCorrect: true);
+  }
+
+  Widget _rosterPreview() {
+    if (checking && check == null) return const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))));
+    final c = check;
+    if (c == null) return const SizedBox.shrink();
+    if (c['ok'] != true) {
+      return Notice((c['reason'] as String?) ?? 'Tanggal ini di luar jadwal siklus roster Anda.', tone: Tone.warn);
+    }
+    String? d(String? key) => c[key] as String?;
+    return _dlCard([
+      ('Tanggal mulai', fmtDate(DateTime.parse(c['start_date'] as String))),
+      ('Tanggal selesai', fmtDate(DateTime.parse(c['end_date'] as String))),
+      ('Durasi', '${c['days']} hari'),
+      if (d('departure_half_day_date') != null) ('Berangkat (setengah hari)', fmtDate(DateTime.parse(d('departure_half_day_date')!))),
+      if (d('travel_out_date') != null) ('Penerbangan pergi', fmtDate(DateTime.parse(d('travel_out_date')!))),
+      if (d('travel_back_date') != null) ('Penerbangan pulang', fmtDate(DateTime.parse(d('travel_back_date')!))),
+      if (d('return_half_day_date') != null) ('Kembali (setengah hari)', fmtDate(DateTime.parse(d('return_half_day_date')!))),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final canSend = validRange && !over;
+    L.watch(context);
+    final balance = isTahunan ? (check?['balance'] as Map<String, dynamic>?) : null;
     final steps = <(String, String, String)>[
-      ('1', 'Rudi Hartono', 'IT Manager · atasan langsung'),
+      ('1', 'Atasan langsung', 'Superintendent Seksi Anda'),
       ('2', 'HR Department', 'Verifikasi saldo cuti & data'),
-      if (travel) ('3', 'GA / Travel', 'Pesan tiket, jadwalkan jemputan · lumpsum oleh HR'),
-      ('${(travel ? 3 : 2) + 1}', 'Itinerary terbit', 'Detail perjalanan muncul di aplikasi'),
+      if (tiket || jemput) ('3', 'GA / Travel', 'Isi tiket & transport setelah disetujui'),
     ];
     return Scaffold(
       backgroundColor: C.bg,
       body: SafeArea(
         child: Column(children: [
-          PageHeader(sent ? 'Ajukan Cuti' : 'Ajukan Cuti'),
+          const PageHeader('Ajukan Cuti'),
           Expanded(
-            child: sent
-                ? _sentView(
-                    context,
-                    title: 'Pengajuan terkirim',
-                    body: [const TextSpan(text: 'Menunggu persetujuan '), TextSpan(text: 'Rudi Hartono', style: ts(15, w: FontWeight.w700, c: C.text2, h: 1.5)), const TextSpan(text: ' (IT Manager). Anda akan menerima notifikasi setiap ada perubahan status.')],
-                    rows: [
-                      ('No. pengajuan', 'CT-2026-11-0031'),
-                      ('Jenis', jenis),
-                      ('Periode', '${fmtDate(start)} – ${fmtDate(end)}'),
-                      ('Durasi', '$days hari'),
-                      ('Perjalanan', tiket && jemput ? 'Tiket + jemputan' : tiket ? 'Tiket pesawat' : jemput ? 'Jemputan' : 'Tidak ada'),
-                    ],
-                    cta: 'Lihat Cuti Tahunan',
-                    onCta: () => Navigator.pop(context),
-                    onReset: () => setState(() => sent = false),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(12)),
-                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                          Text('Sisa cuti tahunan', style: ts(14, w: FontWeight.w600, c: C.blueFg)),
-                          Text('9 hari', style: ts(18, w: FontWeight.w800, c: C.blueFg)),
+            child: !Session.instance.active
+                ? const Padding(padding: EdgeInsets.all(24), child: Notice('Masuk terlebih dahulu untuk mengajukan cuti.'))
+                : sent != null
+                    ? _sentView(
+                        context,
+                        title: 'Pengajuan terkirim',
+                        body: const [TextSpan(text: 'Menunggu persetujuan atasan langsung, lalu konfirmasi HR. Anda akan menerima notifikasi setiap ada perubahan status.')],
+                        rows: [
+                          ('No. pengajuan', '#${sent!['id']}'),
+                          ('Jenis', sent!['type_label'] as String? ?? jenis),
+                          ('Periode', '${fmtDate(DateTime.parse(sent!['start_date'] as String))} – ${fmtDate(DateTime.parse(sent!['end_date'] as String))}'),
+                          ('Durasi', '${sent!['days']} hari'),
+                          ('Perjalanan', tiket && jemput ? 'Tiket + jemputan' : tiket ? 'Tiket pesawat' : jemput ? 'Jemputan' : 'Tidak ada'),
+                        ],
+                        cta: 'Kembali ke Beranda',
+                        onCta: () => Navigator.pop(context),
+                        resetLabel: 'Lihat Itinerary',
+                        onReset: () => Navigator.pushReplacementNamed(context, R.itinerary, arguments: sent!['id'] as int),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          if (balance != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(color: C.blueSoft, borderRadius: BorderRadius.circular(12)),
+                              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                Flexible(child: Text('Sisa cuti tahunan', style: ts(14, w: FontWeight.w600, c: C.blueFg))),
+                                const Gap(0, w: 8),
+                                Text('${balance['remaining']} hari', style: ts(18, w: FontWeight.w800, c: C.blueFg)),
+                              ]),
+                            ),
+                            const Gap(16),
+                          ],
+                          Fld('Jenis cuti', SelectInp<String>(value: jenis, items: jenisList, onChanged: _onJenisChanged), hint: 'Daftar jenis cuti diatur HR dari web AKPSatu'),
+                          const Gap(16),
+                          if (isRoster) ...[
+                            Fld('Tanggal mulai', DateInp(start, (d) {
+                              setState(() => start = d);
+                              _loadCheck();
+                            }, fontSize: 14, padX: 10, first: DateTime.now(), last: DateTime.now().add(const Duration(days: 400)))),
+                            const Gap(16),
+                            _rosterPreview(),
+                          ] else ...[
+                            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Expanded(
+                                child: Fld(
+                                  'Tanggal mulai',
+                                  DateInp(start, (d) {
+                                    setState(() => start = d);
+                                    if (isTahunan) _loadCheck();
+                                  }, fontSize: 14, padX: 10),
+                                ),
+                              ),
+                              const Gap(0, w: 12),
+                              Expanded(child: Fld('Tanggal selesai', DateInp(end, (d) => setState(() => end = d), fontSize: 14, padX: 10, first: start))),
+                            ]),
+                            if (validRange) ...[
+                              const Gap(16),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(12)),
+                                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                  Flexible(child: Text.rich(TextSpan(children: [TextSpan(text: 'Total ', style: ts(14, c: C.text2)), TextSpan(text: '$days hari', style: ts(18, w: FontWeight.w700))]))),
+                                  if (isTahunan && _remaining != null) ...[
+                                    const Gap(0, w: 8),
+                                    Flexible(child: Text.rich(TextSpan(children: [TextSpan(text: 'Sisa setelah cuti: ', style: ts(13, c: C.muted)), TextSpan(text: '${_remaining! - days} hari', style: ts(13, w: FontWeight.w700))]), overflow: TextOverflow.ellipsis)),
+                                  ],
+                                ]),
+                              ),
+                            ],
+                            if (!validRange) ...[const Gap(16), Text('Tanggal selesai harus sama atau setelah tanggal mulai.', style: ts(13, w: FontWeight.w600, c: C.red))],
+                            if (over) ...[const Gap(16), Text('Durasi melebihi sisa cuti tahunan (${_remaining ?? 0} hari).', style: ts(13, w: FontWeight.w600, c: C.red))],
+                          ],
+                          if (checkError != null) ...[const Gap(16), Text(checkError!, style: ts(13, w: FontWeight.w600, c: C.red))],
+                          const Gap(16),
+                          Fld('Alasan', TaField('', controller: reason, hint: 'Jelaskan alasan cuti')),
+                          const Gap(16),
+                          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Expanded(child: Fld('Alamat selama cuti', InpText(controller: address))),
+                            const Gap(0, w: 12),
+                            Expanded(child: Fld('No. darurat', InpText(controller: phone, hint: '08xx', type: TextInputType.phone))),
+                          ]),
+                          if (jenis != 'Cuti Sakit') ...[
+                            const Gap(16),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text('Kebutuhan perjalanan', style: ts(14, w: FontWeight.w800))),
+                                SwitchRow('Tiket pesawat', 'Diisi oleh GA / Travel setelah disetujui', tiket, (v) => setState(() => tiket = v), first: true),
+                                SwitchRow('Jemputan', 'Mess ↔ bandara, berangkat & kembali', jemput, (v) => setState(() => jemput = v)),
+                                if (tiket)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4, bottom: 14),
+                                    child: Fld('Kota tujuan', SelectInp<String>(value: kota, items: const ['Makassar (UPG)', 'Jakarta (CGK)', 'Surabaya (SUB)', 'Kota lain'], onChanged: (v) => setState(() => kota = v))),
+                                  ),
+                              ]),
+                            ),
+                          ],
+                          const Gap(16),
+                          _flowCard(steps),
+                          if (submitError != null) ...[const Gap(16), Text(submitError!, style: ts(13, w: FontWeight.w600, c: C.red))],
+                          const Gap(16),
+                          PrimaryButton(submitting ? 'Mengirim...' : 'Kirim Pengajuan', height: 54, onTap: canSend ? _submit : null),
                         ]),
                       ),
-                      const Gap(16),
-                      Fld(
-                        'Jenis cuti',
-                        SelectInp<String>(
-                          value: jenis,
-                          items: jenisList,
-                          onChanged: (v) => setState(() {
-                            jenis = v;
-                            if (v == 'Cuti Roster') {
-                              tiket = true;
-                              jemput = true;
-                            }
-                            if (v == 'Cuti Sakit') {
-                              tiket = false;
-                              jemput = false;
-                            }
-                          }),
-                        ),
-                        hint: 'Daftar jenis cuti diatur HR dari web AKPSatu',
-                      ),
-                      const Gap(16),
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(child: Fld('Tanggal mulai', DateInp(start, (d) => setState(() => start = d), fontSize: 14, padX: 10))),
-                        const Gap(0, w: 12),
-                        Expanded(child: Fld('Tanggal selesai', DateInp(end, (d) => setState(() => end = d), fontSize: 14, padX: 10))),
-                      ]),
-                      if (validRange) ...[
-                        const Gap(16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(12)),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Flexible(child: Text.rich(TextSpan(children: [TextSpan(text: 'Total ', style: ts(14, c: C.text2)), TextSpan(text: '$days hari', style: ts(18, w: FontWeight.w700))]))),
-                            if (isTahunan) Text.rich(TextSpan(children: [TextSpan(text: 'Sisa setelah cuti: ', style: ts(13, c: C.muted)), TextSpan(text: '${9 - days} hari', style: ts(13, w: FontWeight.w700))])),
-                          ]),
-                        ),
-                      ],
-                      if (!validRange) ...[const Gap(16), Text('Tanggal selesai harus sama atau setelah tanggal mulai.', style: ts(13, w: FontWeight.w600, c: C.red))],
-                      if (over) ...[const Gap(16), Text('Durasi melebihi sisa cuti tahunan (9 hari).', style: ts(13, w: FontWeight.w600, c: C.red))],
-                      const Gap(16),
-                      const Fld('Alasan', TaField('Acara keluarga di Makassar.')),
-                      const Gap(16),
-                      Fld('Pengganti tugas', SelectInp<String>(value: pengganti, items: const ['Fajar Nugroho · Network Engineer', 'Agus Salim · IT Support', 'Rina Kartika · IT Support'], onChanged: (v) => setState(() => pengganti = v))),
-                      const Gap(16),
-                      const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(child: Fld('Alamat selama cuti', InpText(initial: 'Makassar'))),
-                        Gap(0, w: 12),
-                        Expanded(child: Fld('No. darurat', InpText(hint: '08xx', type: TextInputType.phone))),
-                      ]),
-                      if (jenis == 'Cuti Sakit') ...[
-                        const Gap(16),
-                        Fld(
-                          'Surat dokter',
-                          InkWell(
-                            onTap: () => toast(context, 'Pilih berkas (demo)'),
-                            child: Container(
-                              height: 48,
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              alignment: Alignment.centerLeft,
-                              decoration: _inp(),
-                              child: Text('Pilih File  Tidak ada file yang dipilih', style: ts(14, w: FontWeight.w400)),
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (jenis != 'Cuti Sakit') ...[
-                        const Gap(16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: C.line), borderRadius: BorderRadius.circular(14)),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text('Kebutuhan perjalanan', style: ts(14, w: FontWeight.w800))),
-                            SwitchRow('Tiket pesawat', 'Dipesankan oleh GA / Travel', tiket, (v) => setState(() => tiket = v), first: true),
-                            SwitchRow('Jemputan bandara', 'Mess ↔ bandara, berangkat & kembali', jemput, (v) => setState(() => jemput = v)),
-                            if (tiket)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4, bottom: 14),
-                                child: Fld('Kota tujuan', SelectInp<String>(value: kota, items: const ['Makassar (UPG)', 'Jakarta (CGK)', 'Surabaya (SUB)', 'Kota lain'], onChanged: (v) => setState(() => kota = v))),
-                              ),
-                          ]),
-                        ),
-                      ],
-                      const Gap(16),
-                      _flowCard(steps),
-                      const Gap(16),
-                      PrimaryButton(canSend ? 'Kirim Pengajuan' : 'Periksa tanggal cuti', height: 54, onTap: canSend ? () => setState(() => sent = true) : null),
-                    ]),
-                  ),
           ),
         ]),
       ),

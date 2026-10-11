@@ -1,16 +1,36 @@
 import 'package:flutter/material.dart' hide Text;
+import '../api/api.dart';
+import '../l10n/lang.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
+/// Lini masa satu pengajuan cuti: tahap persetujuan, lalu (bila disetujui) keberangkatan/kepulangan dan data
+/// tiket/transport yang diisi HR/GA. [leaveId] = id dari `Api.instance.leaves()`; tanpa id, layar tidak bisa memuat apa pun.
 class ItineraryScreen extends StatefulWidget {
-  const ItineraryScreen({super.key});
+  final int? leaveId;
+  const ItineraryScreen({super.key, this.leaveId});
   @override
   State<ItineraryScreen> createState() => _ItineraryScreenState();
 }
 
 class _ItineraryScreenState extends State<ItineraryScreen> {
-  bool ls = false;
+  Future<Map<String, dynamic>?>? future;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.leaveId != null && Session.instance.active) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      future = Api.instance.leaves().then((rows) => rows.where((r) => r['id'] == widget.leaveId).firstOrNull);
+    });
+    try {
+      await future;
+    } catch (_) {}
+  }
 
   Widget _day(String t) => Padding(padding: const EdgeInsets.fromLTRB(0, 10, 0, 2), child: Text(t, style: ts(12, w: FontWeight.w800, c: C.muted).copyWith(letterSpacing: .4)));
 
@@ -20,17 +40,9 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
         child: Text(t, style: ts(12, w: bold ? FontWeight.w700 : FontWeight.w600, c: fg)),
       );
 
-  Widget _ev({
-    required String time,
-    required Color dot,
-    required Widget box,
-    bool line = true,
-    String? route,
-    bool dashed = false,
-  }) =>
-      IntrinsicHeight(
+  Widget _ev({required String time, required Color dot, required Widget box, bool line = true, String? route, bool dashed = false}) => IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          SizedBox(width: 42, child: Padding(padding: const EdgeInsets.only(top: 15), child: Text(time, textAlign: TextAlign.right, style: ts(12, w: FontWeight.w800, c: C.text2)))),
+          SizedBox(width: 68, child: Padding(padding: const EdgeInsets.only(top: 15), child: Text(time, textAlign: TextAlign.right, style: ts(12, w: FontWeight.w800, c: C.text2)))),
           const Gap(0, w: 10),
           SizedBox(
             width: 14,
@@ -48,7 +60,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: C.line)),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: route == null ? null : () => Navigator.pushNamed(context, route),
+                  onTap: route == null ? null : () => Navigator.pushNamed(context, route, arguments: widget.leaveId),
                   child: SizedBox(width: double.infinity, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), child: box)),
                 ),
               ),
@@ -60,150 +72,168 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   Widget _b(String t) => Text(t, style: ts(14, w: FontWeight.w700));
   Widget _s(String t) => Text(t, style: ts(13, c: C.muted, h: 1.45));
 
-  Widget _rd(String t) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-          decoration: BoxDecoration(color: C.navy2, borderRadius: BorderRadius.circular(10)),
-          child: Column(children: [
-            const Ic('check', size: 18, stroke: 2.4, color: Color(0xFF7FE0A6)),
-            const Gap(4),
-            Text(t, textAlign: TextAlign.center, style: ts(11, w: FontWeight.w600, c: const Color(0xFFDCE7FB))),
-          ]),
-        ),
-      );
+  (String, Tone) _status(String s) => switch (s) {
+        'pending_hr' => ('Menunggu HR', Tone.info),
+        'approved' => ('Disetujui', Tone.ok),
+        'rejected' => ('Ditolak', Tone.bad),
+        'cancelled' => ('Dibatalkan', Tone.neutral),
+        _ => ('Menunggu atasan', Tone.warn),
+      };
 
-  Widget _lsr(String a, String b) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFEEF1F5)))),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Expanded(child: Text(a, style: ts(13, c: C.muted))),
-          const Gap(0, w: 12),
-          Text(b, style: ts(13, w: FontWeight.w700)),
+  String _date(String? iso) {
+    final d = iso == null ? null : DateTime.tryParse(iso);
+    return d == null ? '-' : L.instance.shortDate(d);
+  }
+
+  List<Widget> _timeline(Map<String, dynamic> l) {
+    final status = l['status'] as String;
+    final out = <Widget>[];
+
+    _day('PENGAJUAN');
+    out.add(_ev(
+      time: _date(l['start_date'] as String?),
+      dot: C.blue,
+      line: true,
+      box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b(l['type_label'] as String? ?? ''), _s('${l['reason']}')]),
+    ));
+
+    final sup = l['supervisor'] as Map<String, dynamic>?;
+    if (sup != null) {
+      final rejectedHere = status == 'rejected' && l['hr'] == null;
+      out.add(_ev(
+        time: _date(sup['at'] as String?),
+        dot: rejectedHere ? C.red : C.green,
+        box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _b(rejectedHere ? 'Ditolak atasan' : 'Disetujui atasan'),
+          _s('${sup['by']}'),
+          if ((sup['note'] as String?)?.isNotEmpty ?? false) _s('Catatan: ${sup['note']}'),
         ]),
-      );
+      ));
+    }
 
-  Widget _dotRow(String t) => Row(children: [
-        Container(width: 8, height: 8, decoration: const BoxDecoration(color: C.green, shape: BoxShape.circle)),
-        const Gap(0, w: 8),
-        Expanded(child: Text(t, style: ts(12, c: C.text2))),
-      ]);
+    final hr = l['hr'] as Map<String, dynamic>?;
+    if (hr != null) {
+      final rejectedHere = status == 'rejected';
+      out.add(_ev(
+        time: _date(hr['at'] as String?),
+        dot: rejectedHere ? C.red : C.green,
+        line: status == 'approved',
+        box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _b(rejectedHere ? 'Ditolak HR' : 'Disetujui HR'),
+          _s('${hr['by']}'),
+          if ((hr['note'] as String?)?.isNotEmpty ?? false) _s('Catatan: ${hr['note']}'),
+        ]),
+      ));
+    }
+
+    if (status != 'approved') return out;   // belum disetujui penuh: belum ada jadwal keberangkatan untuk ditampilkan
+
+    final travel = l['travel'] as Map<String, dynamic>?;
+    final needsTravel = l['needs_ticket'] == true || l['needs_pickup'] == true;
+
+    if (l['departure_half_day_date'] != null) {
+      _day('${_date(l['departure_half_day_date'] as String?)} · SETENGAH HARI');
+      out.add(_ev(time: '', dot: C.orange, box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b('Masuk setengah hari'), _s('Berangkat setelah jam kerja siang.')])));
+    }
+
+    if (l['travel_out_date'] != null) {
+      _day('${_date(l['travel_out_date'] as String?)} · BERANGKAT');
+      final o = travel?['outbound'] as Map<String, dynamic>?;
+      out.add(_ev(
+        time: '',
+        dot: C.blue,
+        route: needsTravel ? R.perjalanan : null,
+        box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _b(o?['mode'] == 'flight' ? 'Penerbangan keberangkatan' : 'Keberangkatan'),
+          if (o?['detail'] != null) ...[
+            _s('${o?['detail']}'),
+            const Gap(8),
+            Wrap(spacing: 6, runSpacing: 6, children: [if (o?['seat'] != null) _chip('Kursi ${o?['seat']}', C.blueSoft, C.blueFg)]),
+          ] else
+            _s('Belum diisi HR/GA.'),
+        ]),
+      ));
+    }
+
+    _day('${_date(l['start_date'] as String?)} – ${_date(l['end_date'] as String?)} · CUTI (${l['days']} HARI)');
+    out.add(_ev(time: '', dot: C.navy, dashed: true, box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b(l['type_label'] as String? ?? ''), if ((l['address_during_leave'] as String?)?.isNotEmpty ?? false) _s('Alamat: ${l['address_during_leave']}')])));
+
+    if (l['travel_back_date'] != null) {
+      _day('${_date(l['travel_back_date'] as String?)} · KEMBALI');
+      final r = travel?['return'] as Map<String, dynamic>?;
+      out.add(_ev(
+        time: '',
+        dot: C.blue,
+        route: needsTravel ? R.perjalanan : null,
+        box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _b(r?['mode'] == 'flight' ? 'Penerbangan kepulangan' : 'Kepulangan'),
+          if (r?['detail'] != null) ...[
+            _s('${r?['detail']}'),
+            const Gap(8),
+            Wrap(spacing: 6, runSpacing: 6, children: [if (r?['seat'] != null) _chip('Kursi ${r?['seat']}', C.blueSoft, C.blueFg)]),
+          ] else
+            _s('Belum diisi HR/GA.'),
+        ]),
+      ));
+    }
+
+    if (l['return_half_day_date'] != null) {
+      _day('${_date(l['return_half_day_date'] as String?)} · SETENGAH HARI');
+      out.add(_ev(time: '', dot: C.orange, line: false, box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b('Masuk setengah hari'), _s('Kembali bekerja.')])));
+    }
+
+    return out;
+  }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: C.bg,
-        body: SafeArea(
-          child: Column(children: [
-            const PageHeader('Itinerary Cuti'),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(color: C.navy, borderRadius: BorderRadius.circular(16)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Cuti Roster · CT-2026-09-0214', style: ts(12, c: C.pale, h: 1.35)),
-                      Text('5 – 11 Oktober 2026', style: ts(22, w: FontWeight.w800, c: Colors.white, h: 1.35)),
-                      Text('7 hari · Kendari ⇄ Makassar', style: ts(13, c: const Color(0xFFDCE7FB), h: 1.35)),
-                      const Gap(14),
-                      IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_rd('Cuti disetujui'), const Gap(0, w: 6), _rd('Lumpsum ditransfer'), const Gap(0, w: 6), _rd('Tiket terbit'), const Gap(0, w: 6), _rd('Jemputan terjadwal')])),
-                      const Gap(14),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.only(top: 10),
-                        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.navy2))),
-                        child: Text('Kembali kerja: Sen, 12 Okt · Night shift 19:00', style: ts(12, c: C.pale)),
-                      ),
-                    ]),
+  Widget build(BuildContext context) {
+    L.watch(context);
+    return Scaffold(
+      backgroundColor: C.bg,
+      body: SafeArea(
+        child: Column(children: [
+          const PageHeader('Itinerary Cuti'),
+          Expanded(
+            child: widget.leaveId == null
+                ? const Notice('Pengajuan tidak ditemukan.')
+                : FutureBuilder<Map<String, dynamic>?>(
+                    future: future,
+                    builder: (context, snap) {
+                      if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+                      if (snap.hasError) {
+                        return Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(children: [Text('${snap.error}', style: ts(14, c: C.red)), const Gap(12), PrimaryButton('Coba lagi', onTap: _load)]),
+                        );
+                      }
+                      final l = snap.data;
+                      if (l == null) return const Padding(padding: EdgeInsets.all(24), child: Notice('Pengajuan tidak ditemukan.'));
+                      final (label, tone) = _status(l['status'] as String);
+
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(color: C.navy, borderRadius: BorderRadius.circular(16)),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                Expanded(child: Text(l['type_label'] as String? ?? '', style: ts(12, c: C.pale, h: 1.35))),
+                                Pill(label, tone: tone),
+                              ]),
+                              Text('${_date(l['start_date'] as String?)} – ${_date(l['end_date'] as String?)}', style: ts(20, w: FontWeight.w800, c: Colors.white, h: 1.35)),
+                              Text('${l['days']} hari${(l['destination_city'] as String?)?.isNotEmpty ?? false ? ' · ${l['destination_city']}' : ''}', style: ts(13, c: const Color(0xFFDCE7FB), h: 1.35)),
+                            ]),
+                          ),
+                          ..._timeline(l),
+                        ]),
+                      );
+                    },
                   ),
-                  _day('SEBELUM BERANGKAT'),
-                  _ev(time: '1 Okt', dot: C.green, box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b('Cuti disetujui'), _s('Rudi Hartono (IT Manager) · 1 Okt 09:12'), _s('HR Department · 1 Okt 14:30')])),
-                  _ev(
-                    time: '2 Okt',
-                    dot: C.green,
-                    box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b('Lumpsum cuti ditransfer'), _s('Diajukan oleh HR · LS-​2026-​09-​0142')])),
-                        const Gap(0, w: 8),
-                        const Pill('Ditransfer', tone: Tone.ok),
-                      ]),
-                      const Gap(8),
-                      Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                        Flexible(child: Text('Rp 1.750.000', style: ts(22, w: FontWeight.w800))),
-                        Text('BRI •••• 4521', style: ts(12, c: C.muted)),
-                      ]),
-                      if (ls) ...[
-                        const Gap(8),
-                        _lsr('Tunjangan cuti roster', 'Rp 1.250.000'),
-                        _lsr('Uang makan perjalanan (2 × Rp 150.000)', 'Rp 300.000'),
-                        _lsr('Transport lokal kota tujuan', 'Rp 200.000'),
-                        const Gap(10),
-                        _dotRow('Diajukan HR (Siti Rahmawati) · 28 Sep'),
-                        const Gap(6),
-                        _dotRow('Disetujui Finance · 30 Sep'),
-                        const Gap(6),
-                        _dotRow('Ditransfer ke BRI •••• 4521 a.n. Eddy Adha Saputra · 2 Okt 10:15'),
-                      ],
-                      const Gap(6),
-                      InkWell(onTap: () => setState(() => ls = !ls), child: SizedBox(height: 40, child: Align(alignment: Alignment.centerLeft, child: Text(ls ? 'Sembunyikan rincian' : 'Lihat rincian lumpsum', style: ts(13, w: FontWeight.w700, c: C.blue))))),
-                    ]),
-                  ),
-                  _day('SENIN, 5 OKT · BERANGKAT'),
-                  _ev(
-                    time: '05:30',
-                    dot: C.blue,
-                    route: R.perjalanan,
-                    box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      _b('Jemputan ke bandara'),
-                      _s('Lobby Mess Blok C → Bandara KDI'),
-                      const Gap(8),
-                      Wrap(spacing: 6, runSpacing: 6, children: [_chip('BUS-07', C.blueSoft, C.blueFg), _chip('Kursi 14', C.blueSoft, C.blueFg), _chip('Rahmat Hidayat', const Color(0xFFEEF1F5), C.text2, bold: false)]),
-                    ]),
-                  ),
-                  _ev(
-                    time: '09:40',
-                    dot: C.blue,
-                    route: R.perjalanan,
-                    box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      _b('Penerbangan KDI → UPG'),
-                      _s('XX 1234 · tiba 10:55 · booking K7P2QD'),
-                      const Gap(8),
-                      Wrap(spacing: 6, runSpacing: 6, children: [_chip('Kursi 12A', C.purpleBg, C.purple), _chip('Bagasi 20 kg', const Color(0xFFEEF1F5), C.text2, bold: false)]),
-                    ]),
-                  ),
-                  _day('5 – 10 OKT · MASA OFF'),
-                  _ev(time: '', dot: const Color(0xFFC4CDD9), dashed: true, box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b('Istirahat di Makassar'), _s('Hubungi HR bila ada perubahan jadwal kembali.')])),
-                  _day('MINGGU, 11 OKT · KEMBALI'),
-                  _ev(
-                    time: '07:10',
-                    dot: C.blue,
-                    route: R.perjalanan,
-                    box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      _b('Penerbangan UPG → KDI'),
-                      _s('XX 1231 · tiba 08:25 · booking M3RX8T'),
-                      const Gap(8),
-                      Wrap(spacing: 6, runSpacing: 6, children: [_chip('Kursi 8C', C.purpleBg, C.purple)]),
-                    ]),
-                  ),
-                  _ev(
-                    time: '08:45',
-                    dot: C.blue,
-                    route: R.perjalanan,
-                    box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      _b('Jemputan ke site'),
-                      _s('Bandara KDI (kedatangan) → Mess Blok C'),
-                      const Gap(8),
-                      Wrap(spacing: 6, runSpacing: 6, children: [_chip('BUS-03', C.blueSoft, C.blueFg), _chip('Kursi 6', C.blueSoft, C.blueFg), _chip('Yusuf Rahman', const Color(0xFFEEF1F5), C.text2, bold: false)]),
-                    ]),
-                  ),
-                  _day('SENIN, 12 OKT · MASUK KERJA'),
-                  _ev(time: '18:00', dot: C.orange, route: R.ftw, box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b('Isi Fit To Work'), _s('Wajib sebelum shift dimulai')])),
-                  _ev(time: '19:00', dot: C.navy, line: false, route: R.roster, box: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_b('Night shift dimulai'), _s('12 – 25 Okt · 19:00 – 07:00')])),
-                ]),
-              ),
-            ),
-          ]),
-        ),
-      );
+          ),
+        ]),
+      ),
+    );
+  }
 }
