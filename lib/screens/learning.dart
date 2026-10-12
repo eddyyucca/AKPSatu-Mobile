@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Text;
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 class _Tr {
   final String id, cat, title, trainer, when, room;
@@ -148,7 +149,7 @@ class _LearningScreenState extends State<LearningScreen> {
       for (final x in src) {
         children.add(_train(x));
       }
-      if (src.isEmpty) children.add(Padding(padding: const EdgeInsets.only(top: 40), child: Center(child: Text('Belum ada training yang Anda ikuti. Pilih dari tab Jadwal.', textAlign: TextAlign.center, style: ts(14, c: C.muted)))));
+      if (src.isEmpty) children.add(const EmptyState(icon: 'learn', title: 'Belum ada training', text: 'Pilih training dari tab Jadwal lalu daftar.', color: C.purple, bg: C.purpleBg));
       if (tab == 'sched') children.add(Padding(padding: const EdgeInsets.fromLTRB(2, 4, 2, 0), child: Text('Jadwal training dan pemesanan ruangan dibuat penyelenggara di web AKPSatu. Ruangan dikonfirmasi oleh GA.', style: ts(12, c: C.muted, h: 1.5))));
     }
     return Scaffold(

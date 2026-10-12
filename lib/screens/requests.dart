@@ -4,6 +4,7 @@ import '../l10n/lang.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 String fmtDate(DateTime d) => L.instance.shortDate(d);
 String _p2(int n) => n < 10 ? '0$n' : '$n';
@@ -375,7 +376,7 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
   }
 
   Widget _rosterPreview() {
-    if (checking && check == null) return const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))));
+    if (checking && check == null) return const LoadingView(compact: true, text: 'Memeriksa...');
     final c = check;
     if (c == null) return const SizedBox.shrink();
     if (c['ok'] != true) {

@@ -5,6 +5,7 @@ import '../refresh.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 class LeaveScreen extends StatefulWidget {
   const LeaveScreen({super.key});
@@ -183,11 +184,11 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         const Gap(14),
                         Padding(padding: const EdgeInsets.fromLTRB(4, 6, 4, 0), child: Text('Riwayat pengajuan', style: ts(15, w: FontWeight.w800))),
                         if (loadingHistory && history.isEmpty)
-                          const Padding(padding: EdgeInsets.symmetric(vertical: 32), child: Center(child: CircularProgressIndicator()))
+                          const SkeletonCards(count: 2)
                         else if (error != null && history.isEmpty)
                           Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text(error!, style: ts(13, c: C.red)))
                         else if (history.isEmpty)
-                          Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Text('Belum ada pengajuan cuti.', style: ts(13, c: C.muted)))
+                          const EmptyState(icon: 'leave', title: 'Belum ada pengajuan cuti', text: 'Pengajuan cuti yang Anda buat akan tampil di sini.', color: C.orange, bg: C.orangeBg, compact: true)
                         else
                           for (final r in history) _hist(r),
                       ]),

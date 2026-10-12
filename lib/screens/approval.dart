@@ -3,6 +3,7 @@ import '../l10n/lang.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 class _Item {
   final String type, ini, name, role, title, sub, when, hint;
@@ -108,7 +109,7 @@ class _ApprovalInboxScreenState extends State<ApprovalInboxScreen> {
                   if (i > 0) const Gap(10),
                   _card(context, items[i]),
                 ],
-                if (items.isEmpty) Padding(padding: const EdgeInsets.only(top: 40), child: Text('Tidak ada pengajuan di kategori ini.', style: ts(14, c: C.muted))),
+                if (items.isEmpty) const EmptyState(icon: 'check', title: 'Tidak ada pengajuan', text: 'Tidak ada pengajuan di kategori ini.', color: C.green, bg: C.greenBg),
               ]),
             ),
           ),

@@ -3,6 +3,7 @@ import '../l10n/lang.dart';
 import '../api/api.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 import 'roster_live.dart';
 
 class RosterScreen extends StatefulWidget {
@@ -250,7 +251,7 @@ class _RosterScreenState extends State<RosterScreen> {
                         ),
                       ]),
                     ],
-                    if (notes.isEmpty) ...[const Gap(8), Text('Tidak ada agenda.', style: ts(13, c: C.muted))],
+                    if (notes.isEmpty) ...[const Gap(8), const EmptyState(icon: 'calendar', title: 'Tidak ada agenda', compact: true)],
                     if (change.isNotEmpty) ...[
                       const Gap(8),
                       Container(

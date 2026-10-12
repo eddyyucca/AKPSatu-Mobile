@@ -3,6 +3,7 @@ import '../api/api.dart';
 import '../l10n/lang.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 /// Detail tiket/transport satu pengajuan cuti (tab Berangkat/Kembali), diisi HR/GA setelah cuti disetujui.
 /// [leaveId] = id dari `Api.instance.leaves()`.
@@ -124,7 +125,7 @@ class _TripScreenState extends State<TripScreen> {
             : FutureBuilder<Map<String, dynamic>?>(
                 future: future,
                 builder: (context, snap) {
-                  if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+                  if (snap.connectionState != ConnectionState.done) return const LoadingView();
                   final l = snap.hasError ? null : snap.data;
                   if (l == null) {
                     return Column(children: [

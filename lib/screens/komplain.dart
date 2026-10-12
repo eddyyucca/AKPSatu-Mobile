@@ -8,6 +8,7 @@ import '../refresh.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 const _statusKeys = <String?>[null, 'open', 'progress', 'closed', 'rejected'];
 const _statusNames = ['Semua', 'Terbuka', 'Diproses', 'Selesai', 'Ditolak'];
@@ -92,7 +93,7 @@ class _KomplainScreenState extends State<KomplainScreen> {
               child: FutureBuilder<Map<String, dynamic>>(
                 future: _opts,
                 builder: (context, snap) {
-                  if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+                  if (snap.connectionState != ConnectionState.done) return const LoadingView();
                   if (snap.hasError) return Center(child: _Err(snap.error!, _retry));
                   final user = Map<String, dynamic>.from((snap.data!['user'] as Map?) ?? const {});
                   final canMonitor = user['can_monitor'] == true;
@@ -267,15 +268,11 @@ class _ComplaintListState extends State<ComplaintList> {
 
     final Widget body;
     if (_loading) {
-      body = const Padding(padding: EdgeInsets.symmetric(vertical: 60), child: Center(child: CircularProgressIndicator()));
+      body = const SkeletonCards(count: 4);
     } else if (_error != null) {
       body = _Err(_error!, _load);
     } else if (_items.isEmpty) {
-      body = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48),
-        child: Text(widget.monitor ? 'Tidak ada laporan untuk filter ini.' : 'Belum ada laporan. Ketuk "Buat Laporan" untuk melaporkan masalah fasilitas.',
-            textAlign: TextAlign.center, style: ts(14, c: C.muted, h: 1.5)),
-      );
+      body = EmptyState(icon: 'wrench', title: widget.monitor ? 'Tidak ada laporan' : 'Belum ada laporan', text: widget.monitor ? 'Tidak ada laporan untuk filter ini.' : 'Ketuk "Buat Laporan" untuk melaporkan masalah fasilitas.', color: C.orange, bg: C.orangeBg);
     } else {
       body = Column(children: [
         for (final c in _items) _card(c),
@@ -483,7 +480,7 @@ class _KomplainFormScreenState extends State<KomplainFormScreen> {
                   : FutureBuilder<Map<String, dynamic>>(
                       future: _opts,
                       builder: (context, snap) {
-                        if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+                        if (snap.connectionState != ConnectionState.done) return const LoadingView();
                         if (snap.hasError) return Center(child: _Err(snap.error!, () => Navigator.pushReplacementNamed(context, R.komplainForm)));
                         return _form(snap.data!);
                       },
@@ -600,7 +597,7 @@ class _KomplainDetailScreenState extends State<KomplainDetailScreen> {
                   : FutureBuilder<Map<String, dynamic>>(
                       future: _data,
                       builder: (context, snap) {
-                        if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+                        if (snap.connectionState != ConnectionState.done) return const LoadingView();
                         if (snap.hasError) return Center(child: _Err(snap.error!, _reload));
                         return _body(snap.data!);
                       },

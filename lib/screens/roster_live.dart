@@ -5,6 +5,7 @@ import '../refresh.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 /// Jadwal kerja = roster karyawan yang login, SAMA dengan kalender Roster & Cuti di web HRIS:
 /// kode (K kerja, O off, C cuti, S sakit, I izin, P perjalanan), warna, siklus otomatis, dan penyesuaian HR.
@@ -152,7 +153,7 @@ class _LiveRosterScreenState extends State<LiveRosterScreen> {
         future: _data,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
-            return const Padding(padding: EdgeInsets.symmetric(vertical: 80), child: Center(child: CircularProgressIndicator()));
+            return const LoadingView();
           }
           if (snap.hasError) {
             final e = snap.error;

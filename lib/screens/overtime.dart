@@ -5,6 +5,7 @@ import '../refresh.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 import 'requests.dart';
 
 /// Ajukan lembur ke HRIS. Aturan ikut server (sama dengan web HRIS):
@@ -237,7 +238,7 @@ class _OvertimeScreenState extends State<OvertimeScreen> {
   /// Absensi aktual pada tanggal terpilih + jendela lembur yang diizinkan.
   Widget _attendanceCard() {
     if (loadingCheck && check == null) {
-      return _box(const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 12), child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)))));
+      return _box(const LoadingView(compact: true));
     }
     if (checkError != null) {
       return _box(Column(children: [
@@ -362,11 +363,11 @@ class _OvertimeScreenState extends State<OvertimeScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text('Riwayat lembur', style: ts(14, w: FontWeight.w800))),
           if (loadingHistory && history.isEmpty)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))))
+            const LoadingView(compact: true)
           else if (historyError != null && history.isEmpty)
             Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(historyError!, style: ts(13, c: C.red, h: 1.5)))
           else if (history.isEmpty)
-            Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text('Belum ada riwayat lembur.', style: ts(13, c: C.muted)))
+            const EmptyState(icon: 'overtime', title: 'Belum ada riwayat lembur', text: 'Lembur yang Anda ajukan akan tampil di sini.', compact: true)
           else
             for (var i = 0; i < history.length; i++) _historyRow(history[i], first: i == 0),
         ]),

@@ -3,6 +3,7 @@ import '../pattern.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 class _Pax {
   final int seat;
@@ -129,7 +130,7 @@ class _DriverScreenState extends State<DriverScreen> {
       ));
       children.add(const Gap(8));
     }
-    if (list.isEmpty) children.add(Padding(padding: const EdgeInsets.only(top: 32), child: Center(child: Text('Semua penumpang sudah naik.', style: ts(14, c: C.muted)))));
+    if (list.isEmpty) children.add(const EmptyState(icon: 'check', title: 'Semua penumpang sudah naik', text: 'Anda siap memulai atau menyelesaikan perjalanan.', color: C.green, bg: C.greenBg));
     Widget chip(String t, bool on, VoidCallback tap) => Material(
           color: on ? C.blue : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99), side: BorderSide(color: on ? C.blue : C.input)),

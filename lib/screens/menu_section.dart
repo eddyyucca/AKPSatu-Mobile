@@ -4,6 +4,7 @@ import '../features.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 class _Mi {
   final String label, ic, dept, keys;
@@ -152,7 +153,7 @@ class _MenuSectionState extends State<MenuSection> {
         if (query.isNotEmpty) ...[
           Padding(padding: const EdgeInsets.fromLTRB(8, 4, 8, 6), child: Text('${found.length} hasil untuk "${q.trim()}"', style: ts(12, w: FontWeight.w700, c: C.muted))),
           if (found.isEmpty)
-            Padding(padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8), child: Center(child: Text('Menu tidak ditemukan. Coba kata kunci lain.', textAlign: TextAlign.center, style: ts(13, c: C.muted))))
+            const EmptyState(icon: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.5-4.5', title: 'Menu tidak ditemukan', text: 'Coba kata kunci lain.')
           else
             _grid(found),
         ] else

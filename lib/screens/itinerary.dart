@@ -4,6 +4,7 @@ import '../l10n/lang.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 /// Lini masa satu pengajuan cuti: tahap persetujuan, lalu (bila disetujui) keberangkatan/kepulangan dan data
 /// tiket/transport yang diisi HR/GA. [leaveId] = id dari `Api.instance.leaves()`; tanpa id, layar tidak bisa memuat apa pun.
@@ -199,7 +200,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                 : FutureBuilder<Map<String, dynamic>?>(
                     future: future,
                     builder: (context, snap) {
-                      if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+                      if (snap.connectionState != ConnectionState.done) return const LoadingView();
                       if (snap.hasError) {
                         return Padding(
                           padding: const EdgeInsets.all(24),

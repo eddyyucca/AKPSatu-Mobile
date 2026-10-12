@@ -6,6 +6,7 @@ import '../refresh.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 
 class NotifScreen extends StatefulWidget {
   const NotifScreen({super.key});
@@ -94,7 +95,7 @@ class _NotifScreenState extends State<NotifScreen> {
   List<Widget> _body() {
     if (!Session.instance.active) return [const Notice('Masuk terlebih dahulu untuk melihat notifikasi.')];
     if (center.loading && center.items.isEmpty) {
-      return [const Padding(padding: EdgeInsets.only(top: 48), child: Center(child: CircularProgressIndicator()))];
+      return [const SkeletonCards(count: 5)];
     }
     if (center.error != null && center.items.isEmpty) {
       return [
@@ -106,7 +107,7 @@ class _NotifScreenState extends State<NotifScreen> {
 
     final list = center.items.where((e) => !onlyUnread || !e.read).toList();
     if (list.isEmpty) {
-      return [Padding(padding: const EdgeInsets.only(top: 48), child: Center(child: Text(center.items.isEmpty ? 'Belum ada notifikasi.' : 'Semua notifikasi sudah dibaca.', style: ts(14, c: C.muted))))];
+      return [center.items.isEmpty ? const EmptyState(icon: 'bell', title: 'Belum ada notifikasi', text: 'Pemberitahuan baru akan muncul di sini.') : const EmptyState(icon: 'check', title: 'Semua notifikasi sudah dibaca', text: 'Anda sudah mengikuti semua kabar terbaru.', color: C.green, bg: C.greenBg)];
     }
 
     final out = <Widget>[];

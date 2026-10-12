@@ -4,6 +4,7 @@ import '../l10n/lang.dart';
 import '../refresh.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 import 'shell.dart';
 
 class _Rec {
@@ -86,7 +87,7 @@ class _AttendancePageState extends State<AttendancePage> {
         future: live,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
-            return const Padding(padding: EdgeInsets.symmetric(vertical: 60), child: Center(child: CircularProgressIndicator()));
+            return const LoadingView();
           }
           if (snap.hasError) {
             final e = snap.error;
@@ -112,7 +113,7 @@ class _AttendancePageState extends State<AttendancePage> {
           return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [_sm(n('present'), 'Hadir', C.greenFg), const Gap(0, w: 10), _sm(n('late'), 'Terlambat', C.orangeFg), const Gap(0, w: 10), _sm(n('absent'), 'Tidak hadir', C.red)]),
             const Gap(16),
-            Text(days.isEmpty ? 'Belum ada catatan absensi bulan ini' : '${days.length} catatan · terbaru di atas', style: ts(13, c: C.muted)),
+            if (days.isEmpty) const EmptyState(icon: 'clock', title: 'Belum ada catatan absensi', text: 'Catatan masuk dan pulang bulan ini akan tampil di sini.') else Text('${days.length} catatan · terbaru di atas', style: ts(13, c: C.muted)),
             for (final d in days) _day(d, hours),
           ]);
         },

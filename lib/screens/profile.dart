@@ -8,6 +8,7 @@ import '../refresh.dart';
 import '../routes.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../states.dart';
 import 'requests.dart';
 
 const _trashPath = 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3';
@@ -426,7 +427,7 @@ class _DetailProfileScreenState extends State<DetailProfileScreen> {
             future: future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Padding(padding: EdgeInsets.symmetric(vertical: 60), child: Center(child: CircularProgressIndicator()));
+                return const LoadingView();
               }
               if (snap.hasError) {
                 final e = snap.error;
