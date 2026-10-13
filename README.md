@@ -1,4 +1,4 @@
-# AKPSatu Mobile
+# AKPSatu Mobile v0.1
 
 Aplikasi mobile karyawan AKP (Flutter). Login memakai akun **Portal AKPSatu** (NIK + password yang sama dengan web),
 dan modul HRIS hanya menampilkan data **karyawan yang sedang login**.
